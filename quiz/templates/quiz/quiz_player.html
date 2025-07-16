@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}Question {{ question_index }} - BitePrep{% endblock %}
+
+{% block content %}
+<form id="quiz-player-form" method="POST" action="{% url 'quiz_player' question_index=question_index %}">
+    {% csrf_token %}
+    <div class="row">
+        <!-- Main Question Area -->
+        <div class="col-lg-9">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold">Question {{ question_index }} of {{ total_questions }}</span>
+                        {% if seconds_remaining is not None and not is_feedback_mode %}
+                            <span id="timer" class="badge bg-danger fs-6">Time Left: --:--</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Card Body -->
+                <div class="card-body">
+                    <p class="card-text fs-5"><strong>{{ question.question_text|safe }}</strong></p>
+                    
+                    {% if question.question_image %}
+                        {% if is_feedback_mode %}
+                            <img src="{{ question.question_image.url }}" alt="Question Image" class="img-fluid rounded my-3" style="max-height: 400px;">
+                        {% else %}
+                            <img src="{{ question.question_image.url }}" alt="Question Image" class="img-fluid rounded my-3" style="max-height: 400px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#imageModal">
+                        {% endif %}
+                    {% endif %}
+                    
+                    {% if is_feedback_mode %}
+                        <!-- Feedback View Specifics -->
+                        <ul class="list-group">
+                            {% for answer in question.answers.all %}
+                                <li class="list-group-item {% if answer.is_correct %}list-group-item-success{% elif user_answer and answer.id == user_answer.id %}list-group-item-danger{% endif %}">
+                                    {{ answer.answer_text }}
+                                    {% if answer.is_correct %} <span class="badge bg-success float-end">Correct</span>{% endif %}
+                                    {% if user_answer and answer.id == user_answer.id and not answer.is_correct %} <span class="badge bg-danger float-end">Your Choice</span>{% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        <div class="alert alert-info mt-4"><strong>Explanation:</strong> {{ question.explanation|safe }}</div>
+                    {% else %}
+                        <!-- Standard Question View Specifics -->
+                        <div class="list-group">
+                            {% for answer in question.answers.all %}
+                                <label class="list-group-item list-group-item-action">
+                                    <input class="form-check-input me-2" type="radio" name="answer" value="{{ answer.id }}" {% if user_selected_answer_id == answer.id %}checked{% endif %}>
+                                    {{ answer.answer_text }}
+                                </label>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Card Footer -->
+                <div class="card-footer d-flex justify-content-between align-items-center">
+                    {% if is_feedback_mode %}
+                        <!-- Feedback Footer -->
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#reportModal">Report Question</button>
+                        <div>
+                            {% if is_last_question %}
+                                <button type="submit" name="action" value="finish" class="btn btn-success">Finish & See Results</button>
+                            {% else %}
+                                <button type="submit" name="action" value="next" class="btn btn-primary">Next Question →</button>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <!-- Standard Question Footer -->
+                        <button type="submit" name="action" value="prev" class="btn btn-outline-secondary {% if question_index <= 1 %}disabled{% endif %}">← Previous</button>
+                        <div>
+                            <button type="button" class="btn btn-outline-danger btn-sm me-2" data-bs-toggle="modal" data-bs-target="#reportModal">Report</button>
+                            <button type="submit" name="action" value="toggle_flag" class="btn {% if question.id in quiz_context.flagged_questions %}btn-warning{% else %}btn-outline-warning{% endif %}">
+                                {% if question.id in quiz_context.flagged_questions %}Unflag{% else %}Flag{% endif %}
+                            </button>
+                            {% if quiz_context.mode == 'quiz' %}
+                                <button type="submit" name="action" value="submit_answer" class="btn btn-success ms-2">Submit Answer</button>
+                            {% endif %}
+                        </div>
+                        {% if question_index >= total_questions %}
+                            <button type="submit" name="action" value="finish" class="btn btn-success">Finish & See Results</button>
+                        {% else %}
+                            <button type="submit" name="action" value="next" class="btn btn-primary">Next →</button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <!-- Navigator -->
+        <div class="col-lg-3">
+            <div class="card shadow-sm">
+                <div class="card-header fw-bold">Navigator</div>
+                <div class="card-body" style="max-height: 60vh; overflow-y: auto;">
+                    <div class="d-flex flex-wrap">
+                        {% for q_id in quiz_context.question_ids %}
+                            {% with forloop.counter as idx %}
+                                <a href="{% url 'quiz_player' question_index=idx %}" class="btn {% if q_id|stringformat:'s' in quiz_context.user_answers %}btn-success{% else %}btn-outline-secondary{% endif %} {% if question_index == idx %}active{% endif %} me-1 mb-1 position-relative" style="width: 45px;">
+                                    {{ idx }}
+                                    {% if q_id in quiz_context.flagged_questions %}<span class="position-absolute top-0 start-100 translate-middle p-1 bg-warning border border-light rounded-circle"></span>{% endif %}
+                                </a>
+                            {% endwith %}
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="card-footer"><div class="d-grid"><button type="submit" name="action" value="finish" class="btn btn-danger">End & See Results</button></div></div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Image Zoom Modal -->
+{% if question.question_image and not is_feedback_mode %}
+<div class="modal fade" id="imageModal"><div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Question Image</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-center"><img src="{{ question.question_image.url }}" class="img-fluid"></div></div></div></div>
+{% endif %}
+
+<!-- Report Question Modal -->
+<div class="modal fade" id="reportModal" tabindex="-1" data-question-id="{{ question.id }}">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Report an Issue with this Question</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="report-question-form">
+            <div class="mb-3">
+                <label for="report-reason" class="form-label">What is the issue? (e.g., typo, incorrect answer, unclear explanation)</label>
+                <textarea class="form-control" id="report-reason" rows="4" required></textarea>
+            </div>
+            <div id="report-feedback-message" class="text-center"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="submit-report-btn">Submit Report</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+{{ seconds_remaining|json_script:"timer-data" }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Timer Logic
+        const timerData = JSON.parse(document.getElementById('timer-data').textContent);
+        if (typeof timerData === 'number') {
+            let remaining = timerData;
+            const timerDisplay = document.getElementById('timer');
+            const form = document.getElementById('quiz-player-form');
+            const timerInterval = setInterval(() => {
+                if (remaining <= 0) {
+                    clearInterval(timerInterval);
+                    let finishInput = document.createElement('input');
+                    finishInput.type = 'hidden';
+                    finishInput.name = 'action';
+                    finishInput.value = 'finish';
+                    form.appendChild(finishInput);
+                    form.submit();
+                }
+                remaining--;
+                const minutes = Math.floor(remaining / 60);
+                let seconds = remaining % 60;
+                seconds = seconds < 10 ? '0' + seconds : seconds;
+                if (timerDisplay) timerDisplay.innerHTML = `Time Left: ${minutes}:${seconds}`;
+            }, 1000);
+        }
+
+        // Report Question Logic
+        const reportModalEl = document.getElementById('reportModal');
+        if (reportModalEl) {
+            const reportForm = document.getElementById('report-question-form');
+            const submitReportBtn = document.getElementById('submit-report-btn');
+            const feedbackMessageDiv = document.getElementById('report-feedback-message');
+            
+            const questionId = reportModalEl.dataset.questionId;
+            
+            const reportUrl = "{% url 'report_question' %}";
+            const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+            submitReportBtn.addEventListener('click', function() {
+                const reason = document.getElementById('report-reason').value;
+                if (!reason) {
+                    feedbackMessageDiv.innerHTML = '<p class="text-danger">Please provide a reason for the report.</p>';
+                    return;
+                }
+
+                submitReportBtn.disabled = true;
+                submitReportBtn.textContent = 'Submitting...';
+                feedbackMessageDiv.innerHTML = '';
+
+                fetch(reportUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        'question_id': questionId,
+                        'reason': reason
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        feedbackMessageDiv.innerHTML = '<p class="text-success">Thank you! Your report has been submitted.</p>';
+                        setTimeout(() => {
+                            const modal = bootstrap.Modal.getInstance(reportModalEl);
+                            modal.hide();
+                            reportForm.reset();
+                            feedbackMessageDiv.innerHTML = '';
+                        }, 2000);
+                    } else {
+                        feedbackMessageDiv.innerHTML = `<p class="text-danger">Error: ${data.message}</p>`;
+                    }
+                })
+                .catch(error => {
+                    feedbackMessageDiv.innerHTML = '<p class="text-danger">A network error occurred. Please try again.</p>';
+                })
+                .finally(() => {
+                    submitReportBtn.disabled = false;
+                    submitReportBtn.textContent = 'Submit Report';
+                });
+            });
+        }
+    });
+</script>
+
+{% endblock %}

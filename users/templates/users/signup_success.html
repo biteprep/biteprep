@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Account Created - BitePrep{% endblock %}
+
+{% block head_styles %}
+    <!-- This tag will automatically redirect the user to the homepage after 4 seconds -->
+    <meta http-equiv="refresh" content="4;url={% url 'home' %}">
+{% endblock %}
+
+{% block content %}
+    <div class="alert alert-success text-center">
+        <h2>Welcome to BitePrep!</h2>
+        <p>Your account has been successfully created. You will be redirected to the homepage shortly.</p>
+        <p class="text-muted">If you are not redirected, <a href="{% url 'home' %}">click here</a>.</p>
+        <a href="{% url 'home' %}" class="btn btn-primary mt-3">Continue to Homepage</a>
+    </div>
+{% endblock %}

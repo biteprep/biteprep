@@ -1,0 +1,1 @@
+web: gunicorn biteprep_project.wsgi --log-file -

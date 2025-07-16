@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz Setup - BitePrep{% endblock %}
+
+{% block content %}
+    <div class="text-center">
+        <h1>Welcome to BitePrep!</h1>
+        <p class="lead">Customise your session and select your topics to begin.</p>
+    </div>
+    <hr class="my-4">
+
+    <!-- START: NEW MESSAGE FOR FREE USERS -->
+    {% if user.profile.membership == 'Free' %}
+        <div class="alert alert-info" role="alert">
+            <h4 class="alert-heading">Welcome to your Free Trial!</h4>
+            <p>You are on the free plan. Your quizzes will be limited to a <strong>10-question sample</strong> so you can see how everything works.</p>
+            <hr>
+            <p class="mb-0">Ready for the full experience? <a href="{% url 'membership_page' %}" class="alert-link">Upgrade your plan</a> for unlimited access.</p>
+        </div>
+        <hr class="my-4">
+    {% endif %}
+    <!-- END: NEW MESSAGE FOR FREE USERS -->
+
+    <form method="POST" action="{% url 'quiz_setup' %}">
+        {% csrf_token %}
+        <h2 class="mb-4">Quiz Setup</h2>
+
+        <div class="row g-3">
+            <!-- Filter Card -->
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">1. Filter Questions</h5>
+                        <div class="d-flex flex-wrap justify-content-start">
+                            <div class="form-check me-4"><input class="form-check-input" type="radio" name="question_filter" value="all" id="filterAll" checked><label class="form-check-label" for="filterAll">All</label></div>
+                            <div class="form-check me-4"><input class="form-check-input" type="radio" name="question_filter" value="incorrect" id="filterIncorrect"><label class="form-check-label" for="filterIncorrect">Previously Incorrect</label></div>
+                            <div class="form-check me-4"><input class="form-check-input" type="radio" name="question_filter" value="unanswered" id="filterUnanswered"><label class="form-check-label" for="filterUnanswered">Not Yet Answered</label></div>
+                            <div class="form-check"><input class="form-check-input" type="radio" name="question_filter" value="correct" id="filterCorrect"><label class="form-check-label" for="filterCorrect">Previously Correct</label></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Card -->
+            <div class="col-12 mt-3">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 mb-3 mb-md-0">
+                                <h5 class="card-title">2. Mode</h5>
+                                <div class="form-check"><input class="form-check-input" type="radio" name="quiz_mode" value="quiz" id="modeQuiz" checked><label class="form-check-label" for="modeQuiz">Quiz</label></div>
+                                <div class="form-check"><input class="form-check-input" type="radio" name="quiz_mode" value="test" id="modeTest"><label class="form-check-label" for="modeTest">Test</label></div>
+                            </div>
+                            <div class="col-md-3 mb-3 mb-md-0">
+                                <h5 class="card-title">3. Length</h5>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="question_count_type" value="all" id="countAll" checked>
+                                    <label class="form-check-label" for="countAll">All Questions</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="question_count_type" value="custom" id="countCustom">
+                                    <label class="form-check-label" for="countCustom">Custom:</label>
+                                </div>
+                                <input type="number" name="question_count_custom" id="question-count-input" min="1" class="form-control form-control-sm mt-1" placeholder="e.g., 20" disabled>
+                            </div>
+                            <div class="col-md-3 mb-3 mb-md-0">
+                                <h5 class="card-title">4. Timer</h5>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" name="timer-toggle" id="timer-toggle">
+                                    <label class="form-check-label" for="timer-toggle">Enable Timer</label>
+                                </div>
+                                <input type="number" name="timer_minutes" id="timer-input" min="1" placeholder="Minutes" class="form-control" disabled>
+                            </div>
+                            <div class="col-md-3">
+                                <h5 class="card-title">5. Penalty</h5>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" name="negative-marking-toggle" id="negative-marking-toggle">
+                                    <label class="form-check-label" for="negative-marking-toggle">Enable Penalty</label>
+                                </div>
+                                <select name="penalty_value" id="penalty-select" class="form-select" disabled>
+                                    <option value="0.25">-0.25</option>
+                                    <option value="0.5">-0.5</option>
+                                    <option value="0.75">-0.75</option>
+                                    <option value="1">-1</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Topic Selection -->
+        <h3 class="mt-5">6. Select Topics</h3>
+        <div class="accordion" id="topicAccordion">
+            {% for category in categories %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading{{ category.id }}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ category.id }}" aria-expanded="false" aria-controls="collapse{{ category.id }}">
+                            {{ category.name }}
+                        </button>
+                    </h2>
+                    <div id="collapse{{ category.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ category.id }}" data-bs-parent="#topicAccordion">
+                        <div class="accordion-body">
+                            {% for topic in category.topics.all %}
+                                <div class="d-flex justify-content-between align-items-center border-bottom mb-2 pb-1">
+                                    <h5>{{ topic.name }}</h5>
+                                    <div class="form-check">
+                                        <input class="form-check-input select-all-topic" type="checkbox" data-topic-id="{{ topic.id }}" id="select-all-{{ topic.id }}">
+                                        <label class="form-check-label" for="select-all-{{ topic.id }}">Select All</label>
+                                    </div>
+                                </div>
+                                <ul class="list-unstyled ps-3">
+                                    {% for subtopic in topic.subtopics.all %}
+                                        <li class="form-check">
+                                            <input class="form-check-input subtopic-checkbox" type="checkbox" name="subtopics" value="{{ subtopic.id }}" id="subtopic_{{ subtopic.id }}" data-parent-topic="{{ topic.id }}">
+                                            <label class="form-check-label" for="subtopic_{{ subtopic.id }}">{{ subtopic.name }}</label>
+                                        </li>
+                                    {% empty %}
+                                        <li>No subtopics available.</li>
+                                    {% endfor %}
+                                </ul>
+                            {% empty %}
+                                <p>No topics available in this category.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="d-grid gap-2 mt-4">
+            <button type="submit" class="btn btn-primary btn-lg">Start</button>
+        </div>
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Logic for timer and penalty toggles
+            document.getElementById('timer-toggle').addEventListener('change', function() {
+                document.getElementById('timer-input').disabled = !this.checked;
+            });
+            document.getElementById('negative-marking-toggle').addEventListener('change', function() {
+                document.getElementById('penalty-select').disabled = !this.checked;
+            });
+
+            // Logic for custom question count
+            const countInput = document.getElementById('question-count-input');
+            document.querySelectorAll('input[name="question_count_type"]').forEach(function(radio) {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'custom') {
+                        countInput.disabled = false;
+                        countInput.focus();
+                    } else {
+                        countInput.disabled = true;
+                    }
+                });
+            });
+
+            // Logic for "Select All" topics
+            document.querySelectorAll('.select-all-topic').forEach(function(selectAll) {
+                selectAll.addEventListener('change', function() {
+                    const topicId = this.dataset.topicId;
+                    document.querySelectorAll(`.subtopic-checkbox[data-parent-topic='${topicId}']`).forEach(function(subtopic) {
+                        subtopic.checked = selectAll.checked;
+                    });
+                });
+            });
+            document.querySelectorAll('.subtopic-checkbox').forEach(function(subtopic) {
+                subtopic.addEventListener('change', function() {
+                    const topicId = this.dataset.parentTopic;
+                    const selectAll = document.getElementById(`select-all-${topicId}`);
+                    const allInGroup = document.querySelectorAll(`.subtopic-checkbox[data-parent-topic='${topicId}']`);
+                    selectAll.checked = Array.from(allInGroup).every(checkbox => checkbox.checked);
+                });
+            });
+        });
+    </script>
+{% endblock %}

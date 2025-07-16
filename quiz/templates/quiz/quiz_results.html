@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BitePrep - Quiz Results</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; margin: 2em; background-color: #f4f4f9; text-align: center; }
+        .results-container { max-width: 600px; margin: auto; background-color: white; padding: 40px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        .score { font-size: 3em; font-weight: bold; color: #007bff; margin: 20px 0; }
+        .details { font-size: 1.2em; color: #555; }
+        .btn { display: inline-block; text-decoration: none; background-color: #007bff; color: white; padding: 12px 25px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; text-align: center; margin-top: 30px; }
+        .btn:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+
+    <div class="results-container">
+        <h1>Quiz Complete!</h1>
+        <p class="details">You scored:</p>
+        <div class="score">{{ final_score }} / {{ total_questions }}</div>
+        <p class="details">That's <strong>{{ percentage_score }}%</strong></p>
+        <a href="{% url 'home' %}" class="btn">Take Another Quiz</a>
+    </div>
+
+</body>
+</html>

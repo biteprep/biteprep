@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Test Review - BitePrep{% endblock %}
+
+{% block content %}
+    <div class="text-center border-bottom pb-3 mb-4">
+        <h1>Test Complete!</h1>
+        <p class="lead">You scored:</p>
+        <p class="display-4 fw-bold text-primary">
+            {{ final_score }} / {{ total_questions }} 
+            <span class="fs-4 text-muted">({{ percentage_score }}%)</span>
+        </p>
+    </div>
+
+    <h2 class="mb-4">Detailed Review</h2>
+    {% for item in review_data %}
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <strong>Question {{ forloop.counter }}:</strong> {{ item.question.question_text }}
+            </div>
+            <div class="card-body">
+                {% if item.question.question_image %}
+                    <img src="{{ item.question.question_image.url }}" alt="Question Image" class="img-fluid rounded mb-3" style="max-height: 400px;">
+                {% endif %}
+
+                <ul class="list-group">
+                    {% for answer in item.question.answers.all %}
+                        <li class="list-group-item 
+                            {% if answer.is_correct %}list-group-item-success{% endif %}
+                            {% if item.user_answer.id == answer.id and not item.user_answer.is_correct %}list-group-item-danger{% endif %}
+                        ">
+                            {{ answer.answer_text }}
+                            {% if answer.is_correct %} <span class="badge bg-success float-end">Correct Answer</span>{% endif %}
+                            {% if item.user_answer.id == answer.id %} <span class="badge bg-primary float-end">Your Answer</span>{% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+
+                <div class="alert alert-info mt-3">
+                    <strong>Explanation:</strong> {{ item.question.explanation }}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+
+    <div class="d-grid gap-2 mt-4">
+        <a href="{% url 'home' %}" class="btn btn-primary btn-lg">Take Another Quiz</a>
+    </div>
+{% endblock %}
