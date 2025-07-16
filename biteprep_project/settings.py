@@ -2,7 +2,7 @@
 
 from pathlib import Path
 import os
-import dj_database_url # Add this import
+import dj_database_url
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -17,13 +17,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECRET_KEY is loaded from environment variables
 SECRET_KEY = os.getenv('SECRET_KEY')
 
-# --- NEW: DEBUG setting for production ---
 # The default is False (for production). Set DEBUG=True in your .env file for local development.
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 
-# --- NEW: ALLOWED_HOSTS setting for production ---
-# In your .env file for local dev, you don't need to set this.
 # On your live server, set this to your domain name: ALLOWED_HOSTS=www.biteprep.co.uk,biteprep.co.uk
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
@@ -39,14 +36,14 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    # --- NEW: Add whitenoise for serving static files ---
+    # Add whitenoise for serving static files
     'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    # --- NEW: Add whitenoise middleware ---
+    # Add whitenoise middleware
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -77,7 +74,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'biteprep_project.wsgi.application'
 
 
-# --- NEW: Database configuration for production ---
+# --- UPDATED: Database configuration with schema fix ---
 # It will use your DATABASE_URL on the live server, or the local SQLite file if it's not set.
 DATABASES = {
     'default': dj_database_url.config(
@@ -86,6 +83,13 @@ DATABASES = {
         ssl_require=os.getenv('DATABASE_URL') is not None # Enable SSL for production database
     )
 }
+
+# Add OPTIONS only when a DATABASE_URL is present (i.e., in production)
+# This tells Django to use the new schema we created.
+if os.getenv('DATABASE_URL'):
+    DATABASES['default']['OPTIONS'] = {
+        'options': '-c search_path=biteprep_schema,public'
+    }
 
 
 # Password validation
@@ -104,11 +108,9 @@ USE_I18N = True
 USE_TZ = True
 
 
-# --- NEW: Static files settings for production ---
+# Static files settings for production
 STATIC_URL = 'static/'
-# This is where Django will collect all static files from your apps
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-# This tells WhiteNoise where to find static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
@@ -133,7 +135,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-# --- NEW: Security settings for production ---
+# Security settings for production
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
