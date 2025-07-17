@@ -1,19 +1,19 @@
-# users/urls.py
+# biteprep_project/urls.py
 
+from django.contrib import admin
 from django.urls import path, include
-from . import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
-    # This line includes all of Django's built-in authentication views
-    # (login, logout, password reset, password change, etc.)
-    path('', include('django.contrib.auth.urls')), 
-    
-    # Your custom views
-    path('signup/', views.signup, name='signup'),
-    path('signup/success/', views.signup_success, name='signup_success'),
-    # This custom logout view will override the default one included above
-    path('logout/', views.logout_view, name='logout'), 
-    path('account/', views.account_page, name='account'),
-    path('account/manage-subscription/', views.manage_subscription, name='manage_subscription'),
-    path('account/delete/', views.delete_account, name='delete_account'),
+    path('admin/', admin.site.urls),
+    # This correctly points to the urls.py file inside your 'quiz' app
+    path('', include('quiz.urls')),
+    # This correctly points to the urls.py file inside your 'users' app
+    path('accounts/', include('users.urls')),
 ]
+
+# This is the standard pattern to serve user-uploaded media files (like question images)
+# during local development (when DEBUG is True).
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
