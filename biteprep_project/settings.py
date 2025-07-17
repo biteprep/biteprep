@@ -11,8 +11,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 
+# DEBUG will be 'False' on Render and 'True' on your local machine
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
+# On Render, this is set to your '.onrender.com' URL
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 
@@ -61,6 +63,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'biteprep_project.wsgi.application'
 
+# Database configuration for Render and local development
 DATABASES = {
     'default': dj_database_url.config(
         default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
@@ -105,9 +108,3 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-
-# --- TEMPORARY SETTING FOR PASSWORD RESET ---
-# This tells Django to print any emails it tries to send directly to the console/log.
-# We will remove this after setting the admin password.
-if not DEBUG:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
