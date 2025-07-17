@@ -11,10 +11,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 
-# DEBUG will be 'False' on Render and 'True' on your local machine
+# DEBUG will be 'False' on Hostinger and 'True' on your local machine
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-# On Render, this will be set to your '.onrender.com' URL
+# On Hostinger, this will be set to your domain name (e.g., biteprep.co.uk,www.biteprep.co.uk)
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 
@@ -63,13 +63,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'biteprep_project.wsgi.application'
 
-# Database configuration for Render and local development
+# Updated database configuration for Hostinger
 DATABASES = {
     'default': dj_database_url.config(
         default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
         conn_max_age=600
     )
 }
+
+# If DATABASE_URL is set (i.e., in production on Hostinger),
+# tell Django to use the mysql-connector-python engine.
+if os.getenv('DATABASE_URL'):
+    DATABASES['default']['ENGINE'] = 'mysql.connector.django'
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
@@ -104,6 +110,7 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # Production security settings
 if not DEBUG:
+    # These settings are often required for hosting behind a proxy, which is common.
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
