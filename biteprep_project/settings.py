@@ -99,8 +99,15 @@ MEDIA_ROOT = BASE_DIR / 'media'
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
+# Production security settings
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+
+# --- TEMPORARY SETTING FOR PASSWORD RESET ---
+# This tells Django to print any emails it tries to send directly to the console/log.
+# We will remove this after setting the admin password.
+if not DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
