@@ -7,13 +7,11 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # This correctly points to the urls.py file inside your 'quiz' app
-    path('', include('quiz.urls')),
-    # This correctly points to the urls.py file inside your 'users' app
+    # All user-related URLs will be under /accounts/
     path('accounts/', include('users.urls')),
+    # All other app URLs are at the root
+    path('', include('quiz.urls')),
 ]
 
-# This is the standard pattern to serve user-uploaded media files (like question images)
-# during local development (when DEBUG is True).
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
