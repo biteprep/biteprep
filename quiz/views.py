@@ -15,6 +15,7 @@ from django.contrib.auth.decorators import login_required
 from datetime import date, datetime, timedelta
 from django.db.models import Count, Q
 from django.contrib import messages
+from django.urls import reverse # Add this import for the fix
 
 # ===================================================================
 #  PUBLIC & MEMBERSHIP VIEWS
@@ -100,12 +101,11 @@ def reset_performance(request):
 
 @login_required
 def quiz_setup(request):
-    # Safely check if the user has a profile. If not, create one to fix the account.
     if not hasattr(request.user, 'profile'):
         Profile.objects.create(user=request.user)
     
     if request.method == 'POST':
-        profile = request.user.profile # This is now safe to run
+        profile = request.user.profile
         if (profile.membership == 'Free' or 
             (profile.membership_expiry_date and profile.membership_expiry_date >= date.today())):
             pass
@@ -145,7 +145,6 @@ def quiz_setup(request):
         question_ids = list(questions.values_list('id', flat=True))
         random.shuffle(question_ids)
         
-        # Free Tier Limitation Logic
         if request.user.profile.membership == 'Free':
             FREE_TIER_LIMIT = 10
             if len(question_ids) > FREE_TIER_LIMIT:
@@ -158,7 +157,6 @@ def quiz_setup(request):
                         question_ids = question_ids[:FREE_TIER_LIMIT]
                 except (ValueError, TypeError):
                     pass
-        # Paid User Question Count Logic
         elif question_count_type == 'custom':
             try:
                 custom_count = int(request.POST.get('question_count_custom', 10))
@@ -370,14 +368,24 @@ def report_question(request):
 def create_checkout_session(request):
     stripe.api_key = settings.STRIPE_SECRET_KEY
     price_id = request.POST.get('priceId')
+    
     try:
+        # This is the corrected session creation call with the user ID
         checkout_session = stripe.checkout.Session.create(
-            line_items=[{'price': price_id, 'quantity': 1}], mode='subscription', expand=['line_items'],
-            success_url=request.build_absolute_uri('/success/') + '?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url=request.build_absolute_uri('/cancel/'), client_reference_id=request.user.id
+            client_reference_id=request.user.id,
+            line_items=[{
+                'price': price_id,
+                'quantity': 1,
+            }],
+            mode='subscription',
+            success_url=request.build_absolute_uri(reverse('success_page')) + '?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url=request.build_absolute_uri(reverse('cancel_page')),
         )
-    except Exception as e: return str(e)
-    return HttpResponseRedirect(checkout_session.url)
+    except Exception as e:
+        messages.error(request, f"Could not create a checkout session: {e}")
+        return redirect('membership_page')
+        
+    return redirect(checkout_session.url)
 
 def success_page(request): return render(request, 'quiz/success.html')
 def cancel_page(request): return render(request, 'quiz/cancel.html')
