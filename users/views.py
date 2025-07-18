@@ -20,14 +20,15 @@ def signup(request):
     else:
         form = CustomUserCreationForm()
     
-    return render(request, 'users/signup.html', {'form': form})
+    # This line has been corrected to point to the 'registration' folder.
+    return render(request, 'registration/signup.html', {'form': form})
 
 @login_required
 def signup_success(request):
     """
     Displays a success page after signup before redirecting.
     """
-    return render(request, 'users/signup_success.html')
+    return render(request, 'registration/signup_success.html')
 
 def logout_view(request):
     logout(request)
@@ -36,7 +37,7 @@ def logout_view(request):
 
 @login_required
 def account_page(request):
-    return render(request, 'users/account_page.html')
+    return render(request, 'registration/account_page.html')
 
 @login_required
 def delete_account(request):
