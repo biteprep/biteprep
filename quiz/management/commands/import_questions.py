@@ -45,18 +45,16 @@ class Command(BaseCommand):
                             question.answers.all().delete()
 
                         for i in range(1, 6):
-                            answer_text = row.get(f'answer_{i}')
+                            answer_text_val = row.get(f'answer_{i}')
                             
-                            if answer_text:
-                                # THE BUG WAS HERE. This line now handles empty cells safely.
+                            if answer_text_val:
                                 is_correct_str = row.get(f'is_correct_{i}') or 'FALSE'
                                 is_correct = (is_correct_str.upper() == 'TRUE')
                                 
-                                # I am assuming the field name in your Answer model is 'text'.
-                                # If this fails, the error will tell us the correct name.
+                                # CORRECTED THIS LINE TO USE 'answer_text' INSTEAD OF 'text'
                                 Answer.objects.create(
                                     question=question,
-                                    text=answer_text, 
+                                    answer_text=answer_text_val, 
                                     is_correct=is_correct
                                 )
                                 
