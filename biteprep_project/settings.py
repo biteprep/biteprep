@@ -108,3 +108,4 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     # This line tells Django to trust POST requests from your live site's URL
     CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
+    # Triggering a test deployment on [current date].
