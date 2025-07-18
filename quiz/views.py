@@ -1,8 +1,7 @@
-# quiz/views.py
-
 import random
 import stripe
 import json
+import os # <-- Added for environment variables
 from django.shortcuts import render, redirect
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseRedirect, Http404, JsonResponse
@@ -15,7 +14,7 @@ from django.contrib.auth.decorators import login_required
 from datetime import date, datetime, timedelta
 from django.db.models import Count, Q
 from django.contrib import messages
-from django.urls import reverse # Add this import for the fix
+from django.urls import reverse
 
 # ===================================================================
 #  PUBLIC & MEMBERSHIP VIEWS
@@ -370,7 +369,6 @@ def create_checkout_session(request):
     price_id = request.POST.get('priceId')
     
     try:
-        # This is the corrected session creation call with the user ID
         checkout_session = stripe.checkout.Session.create(
             client_reference_id=request.user.id,
             line_items=[{
@@ -390,36 +388,83 @@ def create_checkout_session(request):
 def success_page(request): return render(request, 'quiz/success.html')
 def cancel_page(request): return render(request, 'quiz/cancel.html')
 
+
+# === START: REVISED AND CORRECTED WEBHOOK ===
 @csrf_exempt
 def stripe_webhook(request):
+    stripe.api_key = settings.STRIPE_SECRET_KEY
     endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
     payload = request.body
-    sig_header = request.META['HTTP_STRIPE_SIGNATURE']
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
     event = None
-    try: event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
-    except ValueError as e: return HttpResponse(status=400)
-    except stripe.error.SignatureVerificationError as e: return HttpResponse(status=400)
+
+    # --- Verification ---
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+    except ValueError as e:
+        # Invalid payload
+        print(f'ERROR: Invalid payload in webhook. {e}')
+        return HttpResponse(status=400)
+    except stripe.error.SignatureVerificationError as e:
+        # Invalid signature
+        print(f'ERROR: Invalid signature in webhook. {e}')
+        return HttpResponse(status=400)
+    except Exception as e:
+        print(f'ERROR: Generic exception during webhook event construction. {e}')
+        return HttpResponse(status=400)
+
+    # --- Handle the checkout.session.completed event ---
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
+        
+        client_reference_id = session.get('client_reference_id')
+        if client_reference_id is None:
+            print('ERROR: client_reference_id is missing from the session.')
+            return HttpResponse(status=200) # Return 200 so Stripe doesn't retry for this non-fatal error
+
+        # Retrieve the price ID by expanding the line_items
         try:
-            user_id = session.client_reference_id
-            if user_id is None: return HttpResponse('Error: No user ID in session', status=400)
-            
             session_with_line_items = stripe.checkout.Session.retrieve(session.id, expand=['line_items'])
             price_id = session_with_line_items.line_items.data[0].price.id
+        except Exception as e:
+            print(f"ERROR: Could not retrieve price ID from session {session.id}. Error: {e}")
+            return HttpResponse(status=200)
 
-            user = User.objects.get(id=user_id)
+        # Get Price IDs from environment variables
+        MONTHLY_PRICE_ID = os.getenv('MONTHLY_PRICE_ID')
+        ANNUAL_PRICE_ID = os.getenv('ANNUAL_PRICE_ID')
+        
+        try:
+            user = User.objects.get(id=client_reference_id)
             profile = user.profile
-            
-            profile.stripe_customer_id = session.customer
 
-            if price_id == 'price_1RkrOp2Y8UHHjO4s3j7nZ29G':
-                profile.membership = 'Monthly'; profile.membership_expiry_date = date.today() + timedelta(days=31)
-            elif price_id == 'price_1RkrR12Y8UHHjO4srz9JbCin':
-                profile.membership = 'Annual'; profile.membership_expiry_date = date.today() + timedelta(days=366)
-            
+            # Update profile based on the purchased product
+            if price_id == MONTHLY_PRICE_ID:
+                profile.membership = 'Monthly'
+                profile.membership_expiry_date = date.today() + timedelta(days=31)
+                print(f"SUCCESS: Upgraded user {user.id} to Monthly.")
+            elif price_id == ANNUAL_PRICE_ID:
+                profile.membership = 'Annual'
+                profile.membership_expiry_date = date.today() + timedelta(days=366)
+                print(f"SUCCESS: Upgraded user {user.id} to Annual.")
+            else:
+                print(f"INFO: Received webhook for non-membership price ID: {price_id}")
+
+            profile.stripe_customer_id = session.get('customer')
             profile.save()
 
-        except User.DoesNotExist: return HttpResponse('Error: User not found', status=404)
-        except Exception as e: return HttpResponse(f"Error: {e}", status=500)
+        except User.DoesNotExist:
+            print(f"ERROR: User with ID {client_reference_id} not found.")
+        except Profile.DoesNotExist:
+             print(f"ERROR: Profile for user with ID {client_reference_id} not found.")
+        except Exception as e:
+            print(f"ERROR: An exception occurred while updating profile for user {client_reference_id}. Error: {e}")
+
+    # Acknowledge receipt of other webhook events
+    else:
+        print(f"INFO: Received unhandled event type: {event['type']}")
+
     return HttpResponse(status=200)
+# === END: REVISED AND CORRECTED WEBHOOK ===

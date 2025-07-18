@@ -1,5 +1,3 @@
-# users/models.py
-
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -20,7 +18,7 @@ class Profile(models.Model):
     # A field to store when a paid membership expires
     membership_expiry_date = models.DateField(null=True, blank=True)
 
-    # New field to store the Stripe Customer ID
+    # Field to store the Stripe Customer ID, linked to their subscription
     stripe_customer_id = models.CharField(max_length=255, blank=True, null=True)
 
     # This makes the object display nicely in the admin panel
