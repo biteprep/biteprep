@@ -19,7 +19,7 @@ class CustomUserCreationForm(UserCreationForm):
         """
         Verify that the email address is not already in use.
         """
-        email = self.cleaned_data.get('email')
-        if User.objects.filter(email=email).exists():
+        email = self.cleaned_data.get('email').lower() # Normalize to lowercase
+        if User.objects.filter(email__iexact=email).exists():
             raise ValidationError("This email address is already in use. Please use a different one.")
         return email

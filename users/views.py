@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.conf import settings
 import stripe
 
+# This now imports the corrected form
 from .forms import CustomUserCreationForm
 
 def signup(request):
@@ -15,24 +16,18 @@ def signup(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
-            # The success message is no longer needed here, as it's on the success page
-            # messages.success(request, f"Welcome to BitePrep, {user.username}! Your account has been created.")
-            
-            # THIS LINE IS CHANGED to redirect to the new success page
             return redirect('signup_success')
     else:
         form = CustomUserCreationForm()
     
     return render(request, 'users/signup.html', {'form': form})
 
-# ADD THIS NEW VIEW
 @login_required
 def signup_success(request):
     """
     Displays a success page after signup before redirecting.
     """
     return render(request, 'users/signup_success.html')
-
 
 def logout_view(request):
     logout(request)

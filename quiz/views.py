@@ -9,6 +9,7 @@ from django.http import HttpResponse, HttpResponseRedirect, Http404, JsonRespons
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from .models import Category, Question, Answer, UserAnswer, QuestionReport, ContactInquiry
+from users.models import Profile
 from .forms import ContactForm
 from django.contrib.auth.decorators import login_required
 from datetime import date, datetime, timedelta
@@ -99,8 +100,12 @@ def reset_performance(request):
 
 @login_required
 def quiz_setup(request):
+    # Safely check if the user has a profile. If not, create one to fix the account.
+    if not hasattr(request.user, 'profile'):
+        Profile.objects.create(user=request.user)
+    
     if request.method == 'POST':
-        profile = request.user.profile
+        profile = request.user.profile # This is now safe to run
         if (profile.membership == 'Free' or 
             (profile.membership_expiry_date and profile.membership_expiry_date >= date.today())):
             pass
@@ -140,6 +145,7 @@ def quiz_setup(request):
         question_ids = list(questions.values_list('id', flat=True))
         random.shuffle(question_ids)
         
+        # Free Tier Limitation Logic
         if request.user.profile.membership == 'Free':
             FREE_TIER_LIMIT = 10
             if len(question_ids) > FREE_TIER_LIMIT:
@@ -152,6 +158,7 @@ def quiz_setup(request):
                         question_ids = question_ids[:FREE_TIER_LIMIT]
                 except (ValueError, TypeError):
                     pass
+        # Paid User Question Count Logic
         elif question_count_type == 'custom':
             try:
                 custom_count = int(request.POST.get('question_count_custom', 10))
