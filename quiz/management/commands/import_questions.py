@@ -16,9 +16,8 @@ class Command(BaseCommand):
                 reader = csv.DictReader(file)
                 
                 for i, row in enumerate(reader):
-                    line_num = i + 2 # Account for header row
+                    line_num = i + 2
                     try:
-                        # --- Get required fields ---
                         subtopic_name = row['subtopic_name']
                         question_text = row['question_text']
                         explanation = row['explanation']
@@ -27,14 +26,12 @@ class Command(BaseCommand):
                             self.stdout.write(self.style.WARNING(f'Skipping line {line_num}: missing required data.'))
                             continue
                         
-                        # --- Find the subtopic ---
                         try:
                             subtopic = Subtopic.objects.get(name__iexact=subtopic_name)
                         except Subtopic.DoesNotExist:
-                            self.stdout.write(self.style.ERROR(f'Line {line_num}: Subtopic "{subtopic_name}" not found. Skipping question.'))
+                            self.stdout.write(self.style.ERROR(f'Line {line_num}: Subtopic "{subtopic_name}" not found. Skipping.'))
                             continue
                         
-                        # --- Create the Question ---
                         question, created = Question.objects.update_or_create(
                             question_text=question_text,
                             subtopic=subtopic,
@@ -47,19 +44,19 @@ class Command(BaseCommand):
                             self.stdout.write(self.style.NOTICE(f'Line {line_num}: Updated existing question: "{question_text[:50]}..."'))
                             question.answers.all().delete()
 
-                        # --- Create Answers ---
                         for i in range(1, 6):
                             answer_text = row.get(f'answer_{i}')
-                            is_correct_str = row.get(f'is_correct_{i}', 'FALSE').upper()
                             
                             if answer_text:
-                                is_correct = (is_correct_str == 'TRUE')
-                                # THE BUG WAS HERE. Changed 'text=' to 'answer_text='.
-                                # I am assuming the field name is 'answer_text'.
-                                # If this fails, I need to see your quiz/models.py file.
+                                # THE BUG WAS HERE. This line now handles empty cells safely.
+                                is_correct_str = row.get(f'is_correct_{i}') or 'FALSE'
+                                is_correct = (is_correct_str.upper() == 'TRUE')
+                                
+                                # I am assuming the field name in your Answer model is 'text'.
+                                # If this fails, the error will tell us the correct name.
                                 Answer.objects.create(
                                     question=question,
-                                    answer_text=answer_text, 
+                                    text=answer_text, 
                                     is_correct=is_correct
                                 )
                                 
