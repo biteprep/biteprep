@@ -35,8 +35,9 @@ class Command(BaseCommand):
                             continue
                         
                         # --- Create the Question ---
+                        # THE BUG WAS HERE. Changed 'text=' to 'question_text=' to match the model.
                         question, created = Question.objects.update_or_create(
-                            text=question_text,
+                            question_text=question_text,
                             subtopic=subtopic,
                             defaults={'explanation': explanation}
                         )
@@ -45,7 +46,6 @@ class Command(BaseCommand):
                             self.stdout.write(self.style.SUCCESS(f'Line {line_num}: Created new question: "{question_text[:50]}..."'))
                         else:
                             self.stdout.write(self.style.NOTICE(f'Line {line_num}: Updated existing question: "{question_text[:50]}..."'))
-                            # If updating, clear old answers to avoid duplicates
                             question.answers.all().delete()
 
                         # --- Create Answers ---
