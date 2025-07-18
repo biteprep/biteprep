@@ -1,0 +1,2 @@
+subtopic_name,question_text,explanation,answer_1,is_correct_1,answer_2,is_correct_2,answer_3,is_correct_3,answer_4,is_correct_4,answer_5,is_correct_5
+Importer Test,"What color is the sky?","The sky appears blue due to Rayleigh scattering of sunlight.",Blue,TRUE,Green,FALSE,Red,FALSE,,
