@@ -35,7 +35,6 @@ class Command(BaseCommand):
                             continue
                         
                         # --- Create the Question ---
-                        # THE BUG WAS HERE. Changed 'text=' to 'question_text=' to match the model.
                         question, created = Question.objects.update_or_create(
                             question_text=question_text,
                             subtopic=subtopic,
@@ -55,9 +54,12 @@ class Command(BaseCommand):
                             
                             if answer_text:
                                 is_correct = (is_correct_str == 'TRUE')
+                                # THE BUG WAS HERE. Changed 'text=' to 'answer_text='.
+                                # I am assuming the field name is 'answer_text'.
+                                # If this fails, I need to see your quiz/models.py file.
                                 Answer.objects.create(
                                     question=question,
-                                    text=answer_text,
+                                    answer_text=answer_text, 
                                     is_correct=is_correct
                                 )
                                 
