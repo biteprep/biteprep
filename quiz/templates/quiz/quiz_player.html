@@ -20,7 +20,7 @@
 
                 <!-- Card Body -->
                 <div class="card-body">
-                    <p class="card-text fs-5"><strong>{{ question.question_text|safe }}</strong></p>
+                    <p class="card-text fs-5"><strong>{{ question.question_text|linebreaksbr }}</strong></p>
                     
                     {% if question.question_image %}
                         {% if is_feedback_mode %}
@@ -41,7 +41,7 @@
                                 </li>
                             {% endfor %}
                         </ul>
-                        <div class="alert alert-info mt-4"><strong>Explanation:</strong> {{ question.explanation|safe }}</div>
+                        <div class="alert alert-info mt-4"><strong>Explanation:</strong><br>{{ question.explanation|linebreaksbr }}</div>
                     {% else %}
                         <!-- Standard Question View Specifics -->
                         <div class="list-group">

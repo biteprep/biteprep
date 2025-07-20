@@ -16,7 +16,7 @@
     {% for item in review_data %}
         <div class="card shadow-sm mb-4">
             <div class="card-header">
-                <strong>Question {{ forloop.counter }}:</strong> {{ item.question.question_text }}
+                <strong>Question {{ forloop.counter }}:</strong> {{ item.question.question_text|linebreaksbr }}
             </div>
             <div class="card-body">
                 {% if item.question.question_image %}
@@ -37,7 +37,7 @@
                 </ul>
 
                 <div class="alert alert-info mt-3">
-                    <strong>Explanation:</strong> {{ item.question.explanation }}
+                    <strong>Explanation:</strong><br>{{ item.question.explanation|linebreaksbr }}
                 </div>
             </div>
         </div>
