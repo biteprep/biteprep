@@ -16,7 +16,8 @@
     {% for item in review_data %}
         <div class="card shadow-sm mb-4">
             <div class="card-header">
-                <strong>Question {{ forloop.counter }}:</strong> {{ item.question.question_text|linebreaksbr }}
+                <!-- CHANGED: Font size changed via custom class `fs-6` -->
+                <strong class="fs-6">Question {{ forloop.counter }}:</strong> <span class="fs-6">{{ item.question.question_text|linebreaksbr }}</span>
             </div>
             <div class="card-body">
                 {% if item.question.question_image %}
@@ -36,7 +37,8 @@
                     {% endfor %}
                 </ul>
 
-                <div class="alert alert-info mt-3">
+                <!-- CHANGED: Added text-start class to align text to the left -->
+                <div class="alert alert-info mt-3 text-start">
                     <strong>Explanation:</strong><br>{{ item.question.explanation|linebreaksbr }}
                 </div>
             </div>
