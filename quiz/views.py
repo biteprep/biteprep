@@ -39,18 +39,6 @@ def contact_page(request):
             
     return render(request, 'quiz/contact_page.html', {'form': form})
 
-def subscription_required(function):
-    def wrapper(request, *args, **kwargs):
-        if request.user.is_authenticated and hasattr(request.user, 'profile'):
-            profile = request.user.profile
-            if (profile.membership != 'Free' and
-                profile.membership_expiry_date and
-                profile.membership_expiry_date >= date.today()):
-                return function(request, *args, **kwargs)
-        messages.warning(request, "Access to this feature requires an active subscription. Please choose a plan to continue.")
-        return redirect('membership_page')
-    return wrapper
-
 @login_required
 def membership_page(request):
     return render(request, 'quiz/membership_page.html')
@@ -105,30 +93,16 @@ def quiz_setup(request):
     
     if request.method == 'POST':
         profile = request.user.profile
-        if (profile.membership == 'Free' or 
-            (profile.membership_expiry_date and profile.membership_expiry_date >= date.today())):
-            pass
-        else:
+        if not (profile.membership == 'Free' or (profile.membership_expiry_date and profile.membership_expiry_date >= date.today())):
             messages.warning(request, "Your subscription has expired. Please renew your plan to continue.")
             return redirect('membership_page')
 
         selected_subtopic_ids = request.POST.getlist('subtopics')
-        question_count_type = request.POST.get('question_count_type', 'all')
-        question_filter = request.POST.get('question_filter', 'all')
-        quiz_mode = request.POST.get('quiz_mode', 'quiz')
-        timer_minutes = 0
-        if 'timer-toggle' in request.POST:
-            try: timer_minutes = int(request.POST.get('timer_minutes', 0))
-            except (ValueError, TypeError): timer_minutes = 0
-        penalty_value = 0.0
-        if 'negative-marking-toggle' in request.POST:
-            try: penalty_value = float(request.POST.get('penalty_value', 0.0))
-            except (ValueError, TypeError): penalty_value = 0.0
-
         if not selected_subtopic_ids:
             messages.info(request, "Please select at least one topic to start a quiz.")
             return redirect('quiz_setup')
 
+        question_filter = request.POST.get('question_filter', 'all')
         questions = Question.objects.filter(subtopic__id__in=selected_subtopic_ids)
 
         if question_filter == 'unanswered':
@@ -144,18 +118,11 @@ def quiz_setup(request):
         question_ids = list(questions.values_list('id', flat=True))
         random.shuffle(question_ids)
         
+        question_count_type = request.POST.get('question_count_type', 'all')
         if request.user.profile.membership == 'Free':
             FREE_TIER_LIMIT = 10
-            if len(question_ids) > FREE_TIER_LIMIT:
-                question_ids = question_ids[:FREE_TIER_LIMIT]
-                messages.info(request, f"Your quiz has been limited to {FREE_TIER_LIMIT} questions for the free trial. Upgrade to unlock unlimited access!")
-            if question_count_type == 'custom':
-                try:
-                    custom_count = int(request.POST.get('question_count_custom', FREE_TIER_LIMIT))
-                    if custom_count > FREE_TIER_LIMIT:
-                        question_ids = question_ids[:FREE_TIER_LIMIT]
-                except (ValueError, TypeError):
-                    pass
+            question_ids = question_ids[:FREE_TIER_LIMIT]
+            messages.info(request, f"Your quiz has been limited to {FREE_TIER_LIMIT} questions for the free trial.")
         elif question_count_type == 'custom':
             try:
                 custom_count = int(request.POST.get('question_count_custom', 10))
@@ -169,12 +136,10 @@ def quiz_setup(request):
             return redirect('quiz_setup')
             
         quiz_context = {
-            'question_ids': question_ids, 'total_questions': len(question_ids), 'mode': quiz_mode,
-            'penalty': penalty_value, 'user_answers': {}, 'flagged_questions': [],
+            'question_ids': question_ids, 'total_questions': len(question_ids), 
+            'mode': request.POST.get('quiz_mode', 'quiz'),
+            'user_answers': {}, 'flagged_questions': [],
         }
-        if timer_minutes > 0:
-            quiz_context['start_time'] = datetime.now().isoformat()
-            quiz_context['duration_seconds'] = timer_minutes * 60
         request.session['quiz_context'] = quiz_context
         return redirect('start_quiz')
         
@@ -185,7 +150,6 @@ def quiz_setup(request):
 @login_required
 def start_quiz(request):
     if 'quiz_context' in request.session:
-        # Reset user answers and flagged questions at the start of a new quiz attempt
         request.session['quiz_context']['user_answers'] = {}
         request.session['quiz_context']['flagged_questions'] = []
         request.session.modified = True
@@ -201,30 +165,19 @@ def quiz_player(request, question_index):
 
     quiz_context = request.session['quiz_context']
     question_ids = quiz_context.get('question_ids', [])
-    quiz_mode = quiz_context.get('mode', 'quiz')
-
-    # Check if the timer has expired
-    if 'start_time' in quiz_context:
-        start_time = datetime.fromisoformat(quiz_context['start_time'])
-        duration = timedelta(seconds=quiz_context.get('duration_seconds', 0))
-        if datetime.now() > start_time + duration:
-            messages.info(request, "Time is up! The quiz has been automatically submitted.")
-            return redirect('quiz_results')
-            
+    
     if not (0 < question_index <= len(question_ids)):
         return redirect('quiz_results')
 
     question_id = question_ids[question_index - 1]
     
+    # Handle POST requests (submitting an answer, navigating, etc.)
     if request.method == 'POST':
         action = request.POST.get('action')
         submitted_answer_id_str = request.POST.get('answer')
 
-        # Save the answer ID before processing actions
+        # Always save the latest answer to the session
         if submitted_answer_id_str:
-            if 'user_answers' not in quiz_context:
-                quiz_context['user_answers'] = {}
-            
             try:
                 answer_obj = Answer.objects.get(id=int(submitted_answer_id_str))
                 quiz_context['user_answers'][str(question_id)] = {
@@ -232,9 +185,9 @@ def quiz_player(request, question_index):
                     'is_correct': answer_obj.is_correct
                 }
             except Answer.DoesNotExist:
-                # Handle case where answer ID is invalid, though this is unlikely
-                pass
+                pass # Ignore if the answer ID is invalid
 
+        # Handle flagging
         if action == 'toggle_flag':
             flagged = quiz_context.get('flagged_questions', [])
             if question_id in flagged:
@@ -242,65 +195,78 @@ def quiz_player(request, question_index):
             else:
                 flagged.append(question_id)
             quiz_context['flagged_questions'] = flagged
+        
+        # Save changes to the session
+        request.session['quiz_context'] = quiz_context
+        request.session.modified = True
 
-        elif action == 'prev' and question_index > 1:
-            request.session['quiz_context'] = quiz_context
-            request.session.modified = True
+        # Navigate or finish the quiz
+        if action == 'prev' and question_index > 1:
             return redirect('quiz_player', question_index=question_index - 1)
-
         elif action == 'next' and question_index < len(question_ids):
-            request.session['quiz_context'] = quiz_context
-            request.session.modified = True
             return redirect('quiz_player', question_index=question_index + 1)
-
         elif action == 'finish':
-            request.session['quiz_context'] = quiz_context
-            request.session.modified = True
             return redirect('quiz_results')
-
-        elif action == 'submit_answer' and quiz_mode == 'quiz':
+        
+        # If in 'quiz' mode and submitting an answer, show feedback
+        elif action == 'submit_answer' and quiz_context.get('mode') == 'quiz':
             if not submitted_answer_id_str:
                 messages.warning(request, "Please select an answer before submitting.")
                 return redirect('quiz_player', question_index=question_index)
             
-            request.session['quiz_context'] = quiz_context
-            request.session.modified = True
-            
-            question = Question.objects.get(pk=question_id)
-            user_answer_obj = Answer.objects.get(pk=int(submitted_answer_id_str))
-            
-            context = {
-                'question': question, 'question_index': question_index, 'total_questions': len(question_ids),
-                'quiz_context': quiz_context, 'is_feedback_mode': True, 'user_answer': user_answer_obj,
-                'is_last_question': question_index == len(question_ids), 'seconds_remaining': None
-            }
-            return render(request, 'quiz/quiz_player.html', context)
-        
-        request.session['quiz_context'] = quiz_context
-        request.session.modified = True
-        return redirect('quiz_player', question_index=question_index)
+            # The page will be re-rendered below, but in feedback mode
+            pass
+        else:
+             # Default action is to just reload the current question page
+            return redirect('quiz_player', question_index=question_index)
 
-    # RENDER PAGE (GET REQUEST)
+
+    # This block runs for GET requests OR after a POST that needs to show feedback
     question = Question.objects.select_related('subtopic__topic').prefetch_related('answers').get(pk=question_id)
     
-    seconds_remaining = None
-    if 'start_time' in quiz_context:
-        start_time = datetime.fromisoformat(quiz_context['start_time'])
-        duration = timedelta(seconds=quiz_context.get('duration_seconds', 0))
-        time_passed = datetime.now() - start_time
-        seconds_remaining = max(0, int((duration - time_passed).total_seconds()))
+    # Prepare the navigator items with their correct styles
+    navigator_items = []
+    user_answers = quiz_context.get('user_answers', {})
+    flagged_questions = quiz_context.get('flagged_questions', [])
+    quiz_mode = quiz_context.get('mode', 'quiz')
 
-    user_answer_info = quiz_context.get('user_answers', {}).get(str(question_id))
-    user_selected_answer_id = user_answer_info['answer_id'] if user_answer_info else None
+    for i, q_id in enumerate(question_ids):
+        idx = i + 1
+        answer_info = user_answers.get(str(q_id))
+        
+        button_class = 'btn-outline-secondary'
+        if quiz_mode == 'quiz' and answer_info:
+            button_class = 'btn-success' if answer_info.get('is_correct') else 'btn-danger'
+        elif answer_info: # This covers Test mode where any answer is 'success'
+            button_class = 'btn-success'
+
+        if idx == question_index:
+            button_class = button_class.replace('btn-outline-', 'btn-') + ' active'
+
+        navigator_items.append({
+            'index': idx,
+            'class': button_class,
+            'is_flagged': q_id in flagged_questions
+        })
+    
+    # Determine if we are in feedback mode (for quiz mode)
+    is_feedback_mode = (quiz_mode == 'quiz' and request.method == 'POST' and request.POST.get('action') == 'submit_answer')
+
+    user_answer_info = user_answers.get(str(question_id))
+    user_selected_answer_id = user_answer_info.get('answer_id') if user_answer_info else None
     
     context = {
-        'question': question, 'question_index': question_index, 'total_questions': len(question_ids),
-        'quiz_context': quiz_context, 'is_feedback_mode': False,
+        'question': question,
+        'question_index': question_index,
+        'total_questions': len(question_ids),
+        'quiz_context': quiz_context,
+        'is_feedback_mode': is_feedback_mode,
         'user_selected_answer_id': user_selected_answer_id,
-        'seconds_remaining': seconds_remaining
+        'user_answer': Answer.objects.get(pk=user_selected_answer_id) if user_selected_answer_id and is_feedback_mode else None,
+        'is_last_question': question_index == len(question_ids),
+        'navigator_items': navigator_items,
     }
     return render(request, 'quiz/quiz_player.html', context)
-
 
 @login_required
 def quiz_results(request):
@@ -310,7 +276,6 @@ def quiz_results(request):
     quiz_context = request.session.pop('quiz_context')
     user_answers_dict = quiz_context.get('user_answers', {})
     question_ids = quiz_context.get('question_ids', [])
-    penalty = quiz_context.get('penalty', 0.0)
 
     final_score = 0.0
     questions_in_quiz = Question.objects.filter(pk__in=question_ids).prefetch_related('answers')
@@ -330,8 +295,6 @@ def quiz_results(request):
                 )
                 if answer.is_correct:
                     final_score += 1.0
-                else:
-                    final_score -= penalty
 
     total_questions = len(question_ids)
     try:
@@ -357,6 +320,8 @@ def quiz_results(request):
     
     return render(request, 'quiz/quiz_review.html', context)
 
+# All other views (report_question, Stripe, etc.) are included below for completeness
+
 @login_required
 def report_question(request):
     if request.method == 'POST':
@@ -364,26 +329,21 @@ def report_question(request):
             data = json.loads(request.body)
             question_id = data.get('question_id')
             reason = data.get('reason')
-
-            if not question_id or not reason:
+            if not all([question_id, reason]):
                 return JsonResponse({'status': 'error', 'message': 'Missing data.'}, status=400)
             
             question = Question.objects.get(pk=question_id)
-            
-            report, created = QuestionReport.objects.update_or_create(
-                user=request.user,
-                question=question,
+            QuestionReport.objects.update_or_create(
+                user=request.user, question=question,
                 defaults={'reason': reason, 'status': 'OPEN'}
             )
-            
             return JsonResponse({'status': 'success', 'message': 'Report submitted successfully!'})
-        
         except Question.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Question not found.'}, status=404)
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
+
 
 # ===================================================================
 #  STRIPE CHECKOUT AND WEBHOOK VIEWS
@@ -393,26 +353,24 @@ def report_question(request):
 def create_checkout_session(request):
     stripe.api_key = settings.STRIPE_SECRET_KEY
     price_id = request.POST.get('priceId')
-    
     try:
         checkout_session = stripe.checkout.Session.create(
             client_reference_id=request.user.id,
-            line_items=[{
-                'price': price_id,
-                'quantity': 1,
-            }],
+            line_items=[{'price': price_id, 'quantity': 1}],
             mode='subscription',
             success_url=request.build_absolute_uri(reverse('success_page')) + '?session_id={CHECKOUT_SESSION_ID}',
             cancel_url=request.build_absolute_uri(reverse('cancel_page')),
         )
+        return redirect(checkout_session.url)
     except Exception as e:
         messages.error(request, f"Could not create a checkout session: {e}")
         return redirect('membership_page')
-        
-    return redirect(checkout_session.url)
 
-def success_page(request): return render(request, 'quiz/success.html')
-def cancel_page(request): return render(request, 'quiz/cancel.html')
+def success_page(request):
+    return render(request, 'quiz/success.html')
+
+def cancel_page(request):
+    return render(request, 'quiz/cancel.html')
 
 @csrf_exempt
 def stripe_webhook(request):
@@ -421,31 +379,20 @@ def stripe_webhook(request):
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
     event = None
-
     try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, endpoint_secret
-        )
-    except ValueError as e:
-        # Invalid payload
-        return HttpResponse(status=400)
-    except stripe.error.SignatureVerificationError as e:
-        # Invalid signature
+        event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+    except (ValueError, stripe.error.SignatureVerificationError) as e:
         return HttpResponse(status=400)
 
-    # Handle the checkout.session.completed event
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         client_reference_id = session.get('client_reference_id')
-
-        if client_reference_id is None:
-            print('ERROR: client_reference_id is missing from the Stripe session.')
+        if not client_reference_id:
             return HttpResponse(status=200)
 
         try:
             user = User.objects.get(id=client_reference_id)
             profile = user.profile
-            
             session_with_line_items = stripe.checkout.Session.retrieve(session.id, expand=['line_items'])
             price_id = session_with_line_items.line_items.data[0].price.id
 
@@ -455,22 +402,12 @@ def stripe_webhook(request):
             elif price_id == settings.STRIPE_ANNUAL_PRICE_ID:
                 profile.membership = 'Annual'
                 profile.membership_expiry_date = date.today() + timedelta(days=366)
-            else:
-                print(f"INFO: Webhook received for non-membership price ID: {price_id}")
-
+            
             profile.stripe_customer_id = session.get('customer')
             profile.save()
-
-            print(f"SUCCESS: Profile for user {client_reference_id} updated successfully.")
-
         except User.DoesNotExist:
-            print(f"ERROR: User with id {client_reference_id} not found in the database.")
             return HttpResponse(status=200)
         except Exception as e:
-            print(f"ERROR: Failed to update user profile. Error: {e}")
             return HttpResponse(status=500)
             
-    else:
-        print(f"INFO: Received unhandled event type: {event['type']}")
-
     return HttpResponse(status=200)
