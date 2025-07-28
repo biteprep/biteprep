@@ -12,9 +12,14 @@
                 <div class="card-header bg-light">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="fw-bold">Question {{ question_index }} of {{ total_questions }}</span>
+                        <!-- TIMER FIX: This 'if' condition now works because the variable is passed correctly -->
+                        {% if seconds_remaining is not None and not is_feedback_mode %}
+                            <span id="timer" class="badge bg-danger fs-6">Time Left: --:--</span>
+                        {% endif %}
                     </div>
                 </div>
 
+                <!-- (The card-body and card-footer sections are unchanged from your working version) -->
                 <div class="card-body">
                     <p class="card-text fs-5"><strong>{{ question.question_text|linebreaksbr }}</strong></p>
                     
@@ -47,7 +52,6 @@
                     {% endif %}
                 </div>
 
-                <!-- Card Footer -->
                 <div class="card-footer d-flex justify-content-between align-items-center">
                     {% if is_feedback_mode %}
                         <!-- Feedback Footer -->
@@ -78,6 +82,7 @@
                         {% endif %}
                     {% endif %}
                 </div>
+
             </div>
         </div>
         <!-- Navigator -->
@@ -86,8 +91,11 @@
                 <div class="card-header fw-bold">Navigator</div>
                 <div class="card-body" style="max-height: 60vh; overflow-y: auto;">
                     <div class="d-flex flex-wrap">
+                        <!-- NAVIGATOR STYLING FIX -->
                         {% for item in navigator_items %}
-                            <a href="{% url 'quiz_player' question_index=item.index %}" class="btn {{ item.class }} me-1 mb-1 position-relative" style="width: 45px;">
+                            <a href="{% url 'quiz_player' question_index=item.index %}" 
+                               class="btn {{ item.class }} me-1 mb-1 position-relative d-flex justify-content-center align-items-center" 
+                               style="width: 45px; height: 45px;">
                                 {{ item.index }}
                                 {% if item.is_flagged %}<span class="position-absolute top-0 start-100 translate-middle p-1 bg-warning border border-light rounded-circle"></span>{% endif %}
                             </a>
@@ -100,6 +108,13 @@
     </div>
 </form>
 
-<!-- (Modals and Scripts remain the same as your original) -->
+<!-- The Modals and Scripts sections are unchanged and should be included -->
+<div class="modal fade" id="imageModal">...</div>
+<div class="modal fade" id="reportModal">...</div>
+{{ seconds_remaining|json_script:"timer-data" }}
+{{ question.id|json_script:"question-id-data" }}
+<script>
+    // Your existing, working JavaScript goes here
+</script>
 
 {% endblock %}
