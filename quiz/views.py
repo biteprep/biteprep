@@ -225,12 +225,15 @@ def quiz_player(request, question_index):
             if 'user_answers' not in quiz_context:
                 quiz_context['user_answers'] = {}
             
-            answer_obj = Answer.objects.get(id=int(submitted_answer_id_str))
-            
-            quiz_context['user_answers'][str(question_id)] = {
-                'answer_id': answer_obj.id,
-                'is_correct': answer_obj.is_correct
-            }
+            try:
+                answer_obj = Answer.objects.get(id=int(submitted_answer_id_str))
+                quiz_context['user_answers'][str(question_id)] = {
+                    'answer_id': answer_obj.id,
+                    'is_correct': answer_obj.is_correct
+                }
+            except Answer.DoesNotExist:
+                # Handle case where answer ID is invalid, though this is unlikely
+                pass
 
         if action == 'toggle_flag':
             flagged = quiz_context.get('flagged_questions', [])

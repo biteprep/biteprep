@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load custom_filters %} {# Make sure to create this custom filter file #}
+{% load custom_filters %}
 
 {% block title %}Question {{ question_index }} - BitePrep{% endblock %}
 
@@ -92,20 +92,17 @@
                     <div class="d-flex flex-wrap">
                         {% for q_id in quiz_context.question_ids %}
                             {% with forloop.counter as idx %}
-                                {% with quiz_context.user_answers|get_item:q_id|default:None as answer_info %}
-                                    {% set button_class = 'btn-outline-secondary' %}
-                                    {% if quiz_context.mode == 'quiz' and answer_info %}
-                                        {% if answer_info.is_correct %}
-                                            {% set button_class = 'btn-success' %}
+                                {% with quiz_context.user_answers|get_item:q_id as answer_info %}
+                                    <a href="{% url 'quiz_player' question_index=idx %}" class="btn 
+                                        {% if quiz_context.mode == 'quiz' and answer_info %}
+                                            {% if answer_info.is_correct %}btn-success{% else %}btn-danger{% endif %}
+                                        {% elif answer_info %}
+                                            btn-success
                                         {% else %}
-                                            {% set button_class = 'btn-danger' %}
+                                            btn-outline-secondary
                                         {% endif %}
-                                    {% elif answer_info %}
-                                        {% set button_class = 'btn-success' %}
-                                    {% endif %}
-                                    {% if question_index == idx %}{% set button_class = button_class|replace:'btn-outline-' 'btn-' %} active{% endif %}
-
-                                    <a href="{% url 'quiz_player' question_index=idx %}" class="btn {{ button_class }} me-1 mb-1 position-relative" style="width: 45px;">
+                                        {% if question_index == idx %}active{% endif %}
+                                        me-1 mb-1 position-relative" style="width: 45px;">
                                         {{ idx }}
                                         {% if q_id in quiz_context.flagged_questions %}<span class="position-absolute top-0 start-100 translate-middle p-1 bg-warning border border-light rounded-circle"></span>{% endif %}
                                     </a>
@@ -114,7 +111,7 @@
                         {% endfor %}
                     </div>
                 </div>
-                <div class="card-footer"><div class="d-grid"><button type="submit" name="action" value="finish" class="btn btn-danger">End & See Results</button></div></div>
+                <div class="card-footer"><div class="d-grid"><button id="finish-quiz-button" type="submit" name="action" value="finish" class="btn btn-danger">End & See Results</button></div></div>
             </div>
         </div>
     </div>
@@ -140,8 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (secondsRemaining <= 0) {
                     clearInterval(timerInterval);
                     timerDisplay.textContent = 'Time Up!';
-                    // Auto-submit the form by giving the finish button a unique id and clicking it
-                    const finishButton = document.querySelector('button[name="action"][value="finish"]');
+                    const finishButton = document.getElementById('finish-quiz-button');
                     if(finishButton) {
                         finishButton.click();
                     }
