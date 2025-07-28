@@ -4,7 +4,7 @@ import json
 import os
 from django.shortcuts import render, redirect
 from django.conf import settings
-from django.http import HttpResponse, HttpResponseRedirect, Http404, JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from .models import Category, Question, Answer, UserAnswer, QuestionReport, ContactInquiry
@@ -402,51 +402,59 @@ def stripe_webhook(request):
             payload, sig_header, endpoint_secret
         )
     except ValueError as e:
-        print(f'ERROR: Invalid payload in webhook. {e}')
+        # Invalid payload
         return HttpResponse(status=400)
     except stripe.error.SignatureVerificationError as e:
-        print(f'ERROR: Invalid signature in webhook. {e}')
-        return HttpResponse(status=400)
-    except Exception as e:
-        print(f'ERROR: Generic exception during webhook event construction. {e}')
+        # Invalid signature
         return HttpResponse(status=400)
 
+    # Handle the checkout.session.completed event
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         client_reference_id = session.get('client_reference_id')
 
         if client_reference_id is None:
-            print('ERROR: client_reference_id is missing from the session. Cannot process user upgrade.')
+            print('ERROR: client_reference_id is missing from the Stripe session.')
+            # We return 200 because this is not a transient error. Retrying won't fix it.
             return HttpResponse(status=200)
 
+        # --- THIS IS THE NEW, SAFER BLOCK OF CODE ---
         try:
-            session_with_line_items = stripe.checkout.Session.retrieve(session.id, expand=['line_items'])
-            price_id = session_with_line_items.line_items.data[0].price.id
-            
-            MONTHLY_PRICE_ID = os.getenv('MONTHLY_PRICE_ID_TEST')
-            ANNUAL_PRICE_ID = os.getenv('ANNUAL_PRICE_ID_TEST')
-            
             user = User.objects.get(id=client_reference_id)
             profile = user.profile
+            
+            session_with_line_items = stripe.checkout.Session.retrieve(session.id, expand=['line_items'])
+            price_id = session_with_line_items.line_items.data[0].price.id
 
-            if price_id == MONTHLY_PRICE_ID:
+            # Update profile based on the price ID from settings
+            if price_id == settings.STRIPE_MONTHLY_PRICE_ID:
                 profile.membership = 'Monthly'
                 profile.membership_expiry_date = date.today() + timedelta(days=31)
-                print(f"SUCCESS (TEST): Upgraded user {user.id} to Monthly.")
-            elif price_id == ANNUAL_PRICE_ID:
+            elif price_id == settings.STRIPE_ANNUAL_PRICE_ID:
                 profile.membership = 'Annual'
                 profile.membership_expiry_date = date.today() + timedelta(days=366)
-                print(f"SUCCESS (TEST): Upgraded user {user.id} to Annual.")
             else:
-                print(f"INFO (TEST): Received webhook for non-membership price ID: {price_id}")
+                print(f"INFO: Webhook received for non-membership price ID: {price_id}")
 
+            # Update the Stripe Customer ID and save
             profile.stripe_customer_id = session.get('customer')
             profile.save()
 
+            print(f"SUCCESS: Profile for user {client_reference_id} updated successfully.")
+
+        except User.DoesNotExist:
+            print(f"ERROR: User with id {client_reference_id} not found in the database.")
+            # Not a transient error, return 200.
+            return HttpResponse(status=200)
         except Exception as e:
-            print(f"ERROR: An exception occurred while updating profile for user {client_reference_id}. Error: {e}")
+            # Any other error (e.g., database connection issue)
+            print(f"ERROR: Failed to update user profile. Error: {e}")
+            # Return a 500 error to tell Stripe to retry this webhook later.
+            return HttpResponse(status=500)
+        # --- END OF THE NEW BLOCK ---
             
     else:
         print(f"INFO: Received unhandled event type: {event['type']}")
 
+    # If we handled the event or it was an unhandled type, return 200
     return HttpResponse(status=200)
