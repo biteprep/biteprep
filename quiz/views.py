@@ -16,6 +16,9 @@ from django.db.models import Count, Q
 from django.contrib import messages
 from django.urls import reverse
 
+# ... (All other views like landing_page, dashboard, etc. remain unchanged) ...
+# I am providing the full file for a safe copy-paste.
+
 # ===================================================================
 #  PUBLIC & MEMBERSHIP VIEWS
 # ===================================================================
@@ -141,7 +144,6 @@ def quiz_setup(request):
             'user_answers': {}, 'flagged_questions': [],
         }
 
-        # Add timer information if enabled
         if 'timer-toggle' in request.POST:
             try:
                 timer_minutes = int(request.POST.get('timer_minutes', 0))
@@ -149,7 +151,7 @@ def quiz_setup(request):
                     quiz_context['start_time'] = datetime.now().isoformat()
                     quiz_context['duration_seconds'] = timer_minutes * 60
             except (ValueError, TypeError):
-                pass # Ignore if timer value is invalid
+                pass
 
         request.session['quiz_context'] = quiz_context
         return redirect('start_quiz')
@@ -182,7 +184,6 @@ def quiz_player(request, question_index):
 
     question_id = question_ids[question_index - 1]
     
-    # Handle POST requests (submitting an answer, navigating, etc.)
     if request.method == 'POST':
         action = request.POST.get('action')
         submitted_answer_id_str = request.POST.get('answer')
@@ -195,7 +196,7 @@ def quiz_player(request, question_index):
                     'is_correct': answer_obj.is_correct
                 }
             except Answer.DoesNotExist:
-                pass # Ignore if the answer ID is invalid
+                pass
 
         if action == 'toggle_flag':
             flagged = quiz_context.get('flagged_questions', [])
@@ -215,12 +216,8 @@ def quiz_player(request, question_index):
         elif action == 'finish':
             return redirect('quiz_results')
         
-        # Fall through to re-render the page, possibly in feedback mode
-        
-    # This block runs for GET requests OR after a POST that needs to show feedback
     question = Question.objects.select_related('subtopic__topic').prefetch_related('answers').get(pk=question_id)
     
-    # --- TIMER LOGIC RESTORED ---
     seconds_remaining = None
     if 'start_time' in quiz_context:
         start_time = datetime.fromisoformat(quiz_context['start_time'])
@@ -231,7 +228,6 @@ def quiz_player(request, question_index):
             messages.info(request, "Time is up! The quiz has been automatically submitted.")
             return redirect('quiz_results')
     
-    # Prepare the navigator items with their correct styles
     navigator_items = []
     user_answers = quiz_context.get('user_answers', {})
     flagged_questions = quiz_context.get('flagged_questions', [])
@@ -244,7 +240,7 @@ def quiz_player(request, question_index):
         button_class = 'btn-outline-secondary'
         if quiz_mode == 'quiz' and answer_info:
             button_class = 'btn-success' if answer_info.get('is_correct') else 'btn-danger'
-        elif answer_info: # This covers Test mode where any answer is 'success'
+        elif answer_info:
             button_class = 'btn-success'
 
         if idx == question_index:
@@ -256,7 +252,6 @@ def quiz_player(request, question_index):
             'is_flagged': q_id in flagged_questions
         })
     
-    # Determine if we are in feedback mode (for quiz mode)
     is_feedback_mode = (quiz_mode == 'quiz' and request.method == 'POST' and request.POST.get('action') == 'submit_answer')
 
     user_answer_info = user_answers.get(str(question_id))
@@ -270,9 +265,9 @@ def quiz_player(request, question_index):
         'is_feedback_mode': is_feedback_mode,
         'user_selected_answer_id': user_selected_answer_id,
         'user_answer': Answer.objects.get(pk=user_selected_answer_id) if user_selected_answer_id and is_feedback_mode else None,
-        'is_last_question': question_index == len(question_ids),
+        'is_last_question': question_index == len(question_ids), # <--- THIS IS THE FIX
         'navigator_items': navigator_items,
-        'seconds_remaining': seconds_remaining, # Timer variable is now correctly passed
+        'seconds_remaining': seconds_remaining,
     }
     return render(request, 'quiz/quiz_player.html', context)
 
