@@ -16,9 +16,6 @@ from django.db.models import Count, Q
 from django.contrib import messages
 from django.urls import reverse
 
-# ... (All other views like landing_page, dashboard, etc. remain unchanged) ...
-# I am providing the full file for a safe copy-paste.
-
 # ===================================================================
 #  PUBLIC & MEMBERSHIP VIEWS
 # ===================================================================
@@ -170,106 +167,19 @@ def start_quiz(request):
     messages.error(request, "Could not start quiz. Please try setting it up again.")
     return redirect('quiz_setup')
 
+# ===================================================================
+#  THIS IS THE TEMPORARY DEBUGGING VIEW
+# ===================================================================
 @login_required
 def quiz_player(request, question_index):
-    if 'quiz_context' not in request.session:
-        messages.error(request, "Quiz session not found. Please start a new quiz.")
-        return redirect('quiz_setup')
-
-    quiz_context = request.session['quiz_context']
-    question_ids = quiz_context.get('question_ids', [])
-    
-    if not (0 < question_index <= len(question_ids)):
-        return redirect('quiz_results')
-
-    question_id = question_ids[question_index - 1]
-    
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        submitted_answer_id_str = request.POST.get('answer')
-
-        if submitted_answer_id_str:
-            try:
-                answer_obj = Answer.objects.get(id=int(submitted_answer_id_str))
-                quiz_context['user_answers'][str(question_id)] = {
-                    'answer_id': answer_obj.id,
-                    'is_correct': answer_obj.is_correct
-                }
-            except Answer.DoesNotExist:
-                pass
-
-        if action == 'toggle_flag':
-            flagged = quiz_context.get('flagged_questions', [])
-            if question_id in flagged:
-                flagged.remove(question_id)
-            else:
-                flagged.append(question_id)
-            quiz_context['flagged_questions'] = flagged
-        
-        request.session['quiz_context'] = quiz_context
-        request.session.modified = True
-
-        if action == 'prev' and question_index > 1:
-            return redirect('quiz_player', question_index=question_index - 1)
-        elif action == 'next' and question_index < len(question_ids):
-            return redirect('quiz_player', question_index=question_index + 1)
-        elif action == 'finish':
-            return redirect('quiz_results')
-        
-    question = Question.objects.select_related('subtopic__topic').prefetch_related('answers').get(pk=question_id)
-    
-    seconds_remaining = None
-    if 'start_time' in quiz_context:
-        start_time = datetime.fromisoformat(quiz_context['start_time'])
-        duration = timedelta(seconds=quiz_context.get('duration_seconds', 0))
-        time_passed = datetime.now() - start_time
-        seconds_remaining = max(0, int((duration - time_passed).total_seconds()))
-        if seconds_remaining <= 0:
-            messages.info(request, "Time is up! The quiz has been automatically submitted.")
-            return redirect('quiz_results')
-    
-    navigator_items = []
-    user_answers = quiz_context.get('user_answers', {})
-    flagged_questions = quiz_context.get('flagged_questions', [])
-    quiz_mode = quiz_context.get('mode', 'quiz')
-
-    for i, q_id in enumerate(question_ids):
-        idx = i + 1
-        answer_info = user_answers.get(str(q_id))
-        
-        button_class = 'btn-outline-secondary'
-        if quiz_mode == 'quiz' and answer_info:
-            button_class = 'btn-success' if answer_info.get('is_correct') else 'btn-danger'
-        elif answer_info:
-            button_class = 'btn-success'
-
-        if idx == question_index:
-            button_class = button_class.replace('btn-outline-', 'btn-') + ' active'
-
-        navigator_items.append({
-            'index': idx,
-            'class': button_class,
-            'is_flagged': q_id in flagged_questions
-        })
-    
-    is_feedback_mode = (quiz_mode == 'quiz' and request.method == 'POST' and request.POST.get('action') == 'submit_answer')
-
-    user_answer_info = user_answers.get(str(question_id))
-    user_selected_answer_id = user_answer_info.get('answer_id') if user_answer_info else None
-    
+    # This is a temporary, simple view for debugging.
+    # It does not use the quiz_context from the session.
     context = {
-        'question': question,
         'question_index': question_index,
-        'total_questions': len(question_ids),
-        'quiz_context': quiz_context,
-        'is_feedback_mode': is_feedback_mode,
-        'user_selected_answer_id': user_selected_answer_id,
-        'user_answer': Answer.objects.get(pk=user_selected_answer_id) if user_selected_answer_id and is_feedback_mode else None,
-        'is_last_question': question_index == len(question_ids), # <--- THIS IS THE FIX
-        'navigator_items': navigator_items,
-        'seconds_remaining': seconds_remaining,
+        'test_message': 'The test page is loading successfully.'
     }
     return render(request, 'quiz/quiz_player.html', context)
+# ===================================================================
 
 
 @login_required
