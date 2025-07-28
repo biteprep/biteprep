@@ -185,6 +185,7 @@ def quiz_setup(request):
 @login_required
 def start_quiz(request):
     if 'quiz_context' in request.session:
+        # Reset user answers and flagged questions at the start of a new quiz attempt
         request.session['quiz_context']['user_answers'] = {}
         request.session['quiz_context']['flagged_questions'] = []
         request.session.modified = True
@@ -202,6 +203,7 @@ def quiz_player(request, question_index):
     question_ids = quiz_context.get('question_ids', [])
     quiz_mode = quiz_context.get('mode', 'quiz')
 
+    # Check if the timer has expired
     if 'start_time' in quiz_context:
         start_time = datetime.fromisoformat(quiz_context['start_time'])
         duration = timedelta(seconds=quiz_context.get('duration_seconds', 0))
@@ -215,11 +217,20 @@ def quiz_player(request, question_index):
     question_id = question_ids[question_index - 1]
     
     if request.method == 'POST':
-        submitted_answer_id = request.POST.get('answer')
-        if submitted_answer_id:
-            quiz_context['user_answers'][str(question_id)] = int(submitted_answer_id)
-
         action = request.POST.get('action')
+        submitted_answer_id_str = request.POST.get('answer')
+
+        # Save the answer ID before processing actions
+        if submitted_answer_id_str:
+            if 'user_answers' not in quiz_context:
+                quiz_context['user_answers'] = {}
+            
+            answer_obj = Answer.objects.get(id=int(submitted_answer_id_str))
+            
+            quiz_context['user_answers'][str(question_id)] = {
+                'answer_id': answer_obj.id,
+                'is_correct': answer_obj.is_correct
+            }
 
         if action == 'toggle_flag':
             flagged = quiz_context.get('flagged_questions', [])
@@ -228,29 +239,32 @@ def quiz_player(request, question_index):
             else:
                 flagged.append(question_id)
             quiz_context['flagged_questions'] = flagged
-            request.session.modified = True
-            return redirect('quiz_player', question_index=question_index)
-        
+
         elif action == 'prev' and question_index > 1:
+            request.session['quiz_context'] = quiz_context
             request.session.modified = True
             return redirect('quiz_player', question_index=question_index - 1)
 
         elif action == 'next' and question_index < len(question_ids):
+            request.session['quiz_context'] = quiz_context
             request.session.modified = True
             return redirect('quiz_player', question_index=question_index + 1)
 
         elif action == 'finish':
+            request.session['quiz_context'] = quiz_context
             request.session.modified = True
             return redirect('quiz_results')
 
         elif action == 'submit_answer' and quiz_mode == 'quiz':
-            if not submitted_answer_id:
+            if not submitted_answer_id_str:
                 messages.warning(request, "Please select an answer before submitting.")
                 return redirect('quiz_player', question_index=question_index)
-
+            
+            request.session['quiz_context'] = quiz_context
             request.session.modified = True
+            
             question = Question.objects.get(pk=question_id)
-            user_answer_obj = Answer.objects.get(pk=int(submitted_answer_id))
+            user_answer_obj = Answer.objects.get(pk=int(submitted_answer_id_str))
             
             context = {
                 'question': question, 'question_index': question_index, 'total_questions': len(question_ids),
@@ -259,10 +273,13 @@ def quiz_player(request, question_index):
             }
             return render(request, 'quiz/quiz_player.html', context)
         
+        request.session['quiz_context'] = quiz_context
         request.session.modified = True
         return redirect('quiz_player', question_index=question_index)
 
+    # RENDER PAGE (GET REQUEST)
     question = Question.objects.select_related('subtopic__topic').prefetch_related('answers').get(pk=question_id)
+    
     seconds_remaining = None
     if 'start_time' in quiz_context:
         start_time = datetime.fromisoformat(quiz_context['start_time'])
@@ -270,10 +287,13 @@ def quiz_player(request, question_index):
         time_passed = datetime.now() - start_time
         seconds_remaining = max(0, int((duration - time_passed).total_seconds()))
 
+    user_answer_info = quiz_context.get('user_answers', {}).get(str(question_id))
+    user_selected_answer_id = user_answer_info['answer_id'] if user_answer_info else None
+    
     context = {
         'question': question, 'question_index': question_index, 'total_questions': len(question_ids),
         'quiz_context': quiz_context, 'is_feedback_mode': False,
-        'user_selected_answer_id': quiz_context.get('user_answers', {}).get(str(question_id)),
+        'user_selected_answer_id': user_selected_answer_id,
         'seconds_remaining': seconds_remaining
     }
     return render(request, 'quiz/quiz_player.html', context)
@@ -293,10 +313,11 @@ def quiz_results(request):
     questions_in_quiz = Question.objects.filter(pk__in=question_ids).prefetch_related('answers')
     question_map = {q.id: q for q in questions_in_quiz}
     
-    for q_id_str, user_answer_id in user_answers_dict.items():
+    for q_id_str, answer_info in user_answers_dict.items():
         q_id = int(q_id_str)
+        user_answer_id = answer_info.get('answer_id')
         question = question_map.get(q_id)
-        if question:
+        if question and user_answer_id:
             answer = next((ans for ans in question.answers.all() if ans.id == user_answer_id), None)
             if answer:
                 UserAnswer.objects.update_or_create(
@@ -319,7 +340,8 @@ def quiz_results(request):
     for q_id in question_ids:
         question = question_map.get(q_id)
         if question:
-            user_answer_id = user_answers_dict.get(str(q_id))
+            answer_info = user_answers_dict.get(str(q_id))
+            user_answer_id = answer_info.get('answer_id') if answer_info else None
             user_answer = next((ans for ans in question.answers.all() if ans.id == user_answer_id), None) if user_answer_id else None
             review_data.append({'question': question, 'user_answer': user_answer})
 
@@ -415,10 +437,8 @@ def stripe_webhook(request):
 
         if client_reference_id is None:
             print('ERROR: client_reference_id is missing from the Stripe session.')
-            # We return 200 because this is not a transient error. Retrying won't fix it.
             return HttpResponse(status=200)
 
-        # --- THIS IS THE NEW, SAFER BLOCK OF CODE ---
         try:
             user = User.objects.get(id=client_reference_id)
             profile = user.profile
@@ -426,7 +446,6 @@ def stripe_webhook(request):
             session_with_line_items = stripe.checkout.Session.retrieve(session.id, expand=['line_items'])
             price_id = session_with_line_items.line_items.data[0].price.id
 
-            # Update profile based on the price ID from settings
             if price_id == settings.STRIPE_MONTHLY_PRICE_ID:
                 profile.membership = 'Monthly'
                 profile.membership_expiry_date = date.today() + timedelta(days=31)
@@ -436,7 +455,6 @@ def stripe_webhook(request):
             else:
                 print(f"INFO: Webhook received for non-membership price ID: {price_id}")
 
-            # Update the Stripe Customer ID and save
             profile.stripe_customer_id = session.get('customer')
             profile.save()
 
@@ -444,17 +462,12 @@ def stripe_webhook(request):
 
         except User.DoesNotExist:
             print(f"ERROR: User with id {client_reference_id} not found in the database.")
-            # Not a transient error, return 200.
             return HttpResponse(status=200)
         except Exception as e:
-            # Any other error (e.g., database connection issue)
             print(f"ERROR: Failed to update user profile. Error: {e}")
-            # Return a 500 error to tell Stripe to retry this webhook later.
             return HttpResponse(status=500)
-        # --- END OF THE NEW BLOCK ---
             
     else:
         print(f"INFO: Received unhandled event type: {event['type']}")
 
-    # If we handled the event or it was an unhandled type, return 200
     return HttpResponse(status=200)

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load custom_filters %} {# Make sure to create this custom filter file #}
 
 {% block title %}Question {{ question_index }} - BitePrep{% endblock %}
 
@@ -18,17 +19,11 @@
                     </div>
                 </div>
 
-                <!-- Card Body -->
                 <div class="card-body">
-                    <!-- CHANGED: Font size changed from fs-5 to fs-6 -->
-                    <p class="card-text fs-6"><strong>{{ question.question_text|linebreaksbr }}</strong></p>
+                    <p class="card-text fs-5"><strong>{{ question.question_text|linebreaksbr }}</strong></p>
                     
                     {% if question.question_image %}
-                        {% if is_feedback_mode %}
-                            <img src="{{ question.question_image.url }}" alt="Question Image" class="img-fluid rounded my-3" style="max-height: 400px;">
-                        {% else %}
-                            <img src="{{ question.question_image.url }}" alt="Question Image" class="img-fluid rounded my-3" style="max-height: 400px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#imageModal">
-                        {% endif %}
+                        <img src="{{ question.question_image.url }}" alt="Question Image" class="img-fluid rounded my-3" style="max-height: 400px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#imageModal">
                     {% endif %}
                     
                     {% if is_feedback_mode %}
@@ -42,7 +37,6 @@
                                 </li>
                             {% endfor %}
                         </ul>
-                        <!-- CHANGED: Added text-start class to align text to the left -->
                         <div class="alert alert-info mt-4 text-start"><strong>Explanation:</strong><br>{{ question.explanation|linebreaksbr }}</div>
                     {% else %}
                         <!-- Standard Question View Specifics -->
@@ -98,10 +92,24 @@
                     <div class="d-flex flex-wrap">
                         {% for q_id in quiz_context.question_ids %}
                             {% with forloop.counter as idx %}
-                                <a href="{% url 'quiz_player' question_index=idx %}" class="btn {% if q_id|stringformat:'s' in quiz_context.user_answers %}btn-success{% else %}btn-outline-secondary{% endif %} {% if question_index == idx %}active{% endif %} me-1 mb-1 position-relative" style="width: 45px;">
-                                    {{ idx }}
-                                    {% if q_id in quiz_context.flagged_questions %}<span class="position-absolute top-0 start-100 translate-middle p-1 bg-warning border border-light rounded-circle"></span>{% endif %}
-                                </a>
+                                {% with quiz_context.user_answers|get_item:q_id|default:None as answer_info %}
+                                    {% set button_class = 'btn-outline-secondary' %}
+                                    {% if quiz_context.mode == 'quiz' and answer_info %}
+                                        {% if answer_info.is_correct %}
+                                            {% set button_class = 'btn-success' %}
+                                        {% else %}
+                                            {% set button_class = 'btn-danger' %}
+                                        {% endif %}
+                                    {% elif answer_info %}
+                                        {% set button_class = 'btn-success' %}
+                                    {% endif %}
+                                    {% if question_index == idx %}{% set button_class = button_class|replace:'btn-outline-' 'btn-' %} active{% endif %}
+
+                                    <a href="{% url 'quiz_player' question_index=idx %}" class="btn {{ button_class }} me-1 mb-1 position-relative" style="width: 45px;">
+                                        {{ idx }}
+                                        {% if q_id in quiz_context.flagged_questions %}<span class="position-absolute top-0 start-100 translate-middle p-1 bg-warning border border-light rounded-circle"></span>{% endif %}
+                                    </a>
+                                {% endwith %}
                             {% endwith %}
                         {% endfor %}
                     </div>
@@ -112,40 +120,85 @@
     </div>
 </form>
 
-<!-- (Modals and Scripts remain the same) -->
-<!-- Image Zoom Modal -->
-{% if question.question_image and not is_feedback_mode %}
+<!-- Modals -->
 <div class="modal fade" id="imageModal"><div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Question Image</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-center"><img src="{{ question.question_image.url }}" class="img-fluid"></div></div></div></div>
-{% endif %}
-<!-- Report Question Modal -->
-<div class="modal fade" id="reportModal" tabindex="-1" data-question-id="{{ question.id }}">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Report an Issue with this Question</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="report-question-form">
-            <div class="mb-3">
-                <label for="report-reason" class="form-label">What is the issue? (e.g., typo, incorrect answer, unclear explanation)</label>
-                <textarea class="form-control" id="report-reason" rows="4" required></textarea>
-            </div>
-            <div id="report-feedback-message" class="text-center"></div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="submit-report-btn">Submit Report</button>
-      </div>
-    </div>
-  </div>
-</div>
+<div class="modal fade" id="reportModal"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Report an Issue</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><form id="report-question-form"><div class="modal-body"><div class="mb-3"><label for="report-reason" class="form-label">What is the issue?</label><textarea class="form-control" id="report-reason" rows="4" required></textarea></div><div id="report-feedback-message" class="text-center"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="button" class="btn btn-primary" id="submit-report-btn">Submit Report</button></div></form></div></div></div>
+
 <!-- Scripts -->
 {{ seconds_remaining|json_script:"timer-data" }}
+{{ question.id|json_script:"question-id-data" }}
+
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // (Timer and Report Question logic remains unchanged)
-    });
+document.addEventListener('DOMContentLoaded', function() {
+    // TIMER SCRIPT
+    const timerDataEl = document.getElementById('timer-data');
+    if (timerDataEl) {
+        let secondsRemaining = JSON.parse(timerDataEl.textContent);
+        const timerDisplay = document.getElementById('timer');
+        if (secondsRemaining !== null && timerDisplay) {
+            const timerInterval = setInterval(() => {
+                if (secondsRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    timerDisplay.textContent = 'Time Up!';
+                    // Auto-submit the form by giving the finish button a unique id and clicking it
+                    const finishButton = document.querySelector('button[name="action"][value="finish"]');
+                    if(finishButton) {
+                        finishButton.click();
+                    }
+                } else {
+                    const minutes = Math.floor(secondsRemaining / 60);
+                    const seconds = secondsRemaining % 60;
+                    timerDisplay.textContent = `Time Left: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                    secondsRemaining--;
+                }
+            }, 1000);
+        }
+    }
+
+    // REPORT QUESTION SCRIPT
+    const reportForm = document.getElementById('report-question-form');
+    const submitReportBtn = document.getElementById('submit-report-btn');
+    const feedbackMessage = document.getElementById('report-feedback-message');
+    const questionId = JSON.parse(document.getElementById('question-id-data').textContent);
+
+    if (submitReportBtn) {
+        submitReportBtn.addEventListener('click', function() {
+            const reason = document.getElementById('report-reason').value;
+            if (!reason) {
+                feedbackMessage.textContent = 'Please provide a reason for the report.';
+                feedbackMessage.className = 'text-danger';
+                return;
+            }
+
+            fetch("{% url 'report_question' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    question_id: questionId,
+                    reason: reason
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    feedbackMessage.textContent = data.message;
+                    feedbackMessage.className = 'text-success';
+                    submitReportBtn.disabled = true;
+                    reportForm.reset();
+                } else {
+                    feedbackMessage.textContent = data.message || 'An unknown error occurred.';
+                    feedbackMessage.className = 'text-danger';
+                }
+            })
+            .catch(error => {
+                feedbackMessage.textContent = 'A network error occurred. Please try again.';
+                feedbackMessage.className = 'text-danger';
+            });
+        });
+    }
+});
 </script>
 {% endblock %}
