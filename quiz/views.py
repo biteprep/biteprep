@@ -1,8 +1,8 @@
-# quiz/views.py (Complete file for Chart Feature)
+# quiz/views.py (Complete file for Granular Breakdown Feature)
 
 import random
 import stripe
-import json # Make sure json is imported
+import json
 import os
 from datetime import date, datetime, timedelta
 import traceback
@@ -14,7 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
-from django.db.models.functions import TruncDate # Add this import
+from django.db.models.functions import TruncDate
 from django.contrib import messages
 from django.urls import reverse
 from django.utils import timezone
@@ -51,7 +51,7 @@ def membership_page(request):
 
 @login_required
 def dashboard(request):
-    # --- This first section for overall stats remains the same ---
+    # --- Overall stats and chart logic remain unchanged ---
     user_answers = UserAnswer.objects.filter(user=request.user)
     total_answered = user_answers.count()
     correct_answered = user_answers.filter(is_correct=True).count()
@@ -60,61 +60,90 @@ def dashboard(request):
     except ZeroDivisionError:
         overall_percentage = 0
     
-    # --- This section for topic stats remains the same ---
-    topic_performance = (
-        UserAnswer.objects.filter(user=request.user)
-        .values('question__subtopic__topic__name')
-        .annotate(total=Count('id'), correct=Count('id', filter=Q(is_correct=True)))
-        .order_by('-total')
-    )
-    topic_stats = []
-    for topic in topic_performance:
-        try:
-            percentage = (topic['correct'] / topic['total']) * 100
-        except ZeroDivisionError:
-            percentage = 0
-        topic_stats.append({
-            'name': topic['question__subtopic__topic__name'],
-            'total': topic['total'],
-            'correct': topic['correct'],
-            'percentage': round(percentage, 1)
-        })
-
-    # --- START OF NEW LOGIC FOR THE CHART ---
-    # 1. Get data from the last 30 days
     thirty_days_ago = timezone.now() - timedelta(days=30)
     recent_answers = UserAnswer.objects.filter(user=request.user, timestamp__gte=thirty_days_ago)
-
-    # 2. Group answers by date and calculate daily stats
     daily_performance = (
         recent_answers
-        .annotate(date=TruncDate('timestamp')) # Group by date
-        .values('date') # Select the date
-        .annotate(
-            daily_total=Count('id'),
-            daily_correct=Count('id', filter=Q(is_correct=True))
-        )
+        .annotate(date=TruncDate('timestamp'))
+        .values('date')
+        .annotate(daily_total=Count('id'), daily_correct=Count('id', filter=Q(is_correct=True)))
         .order_by('date')
     )
-
-    # 3. Format the data for Chart.js
     chart_labels = []
     chart_data = []
     for daily_stat in daily_performance:
-        chart_labels.append(daily_stat['date'].strftime('%b %d')) # Format date as "Jul 31"
+        chart_labels.append(daily_stat['date'].strftime('%b %d'))
         try:
             daily_accuracy = (daily_stat['daily_correct'] / daily_stat['daily_total']) * 100
         except ZeroDivisionError:
             daily_accuracy = 0
         chart_data.append(round(daily_accuracy))
-    # --- END OF NEW LOGIC FOR THE CHART ---
+
+    # --- START OF NEW LOGIC FOR TOPIC/SUBTOPIC BREAKDOWN ---
+    # 1. Query performance grouped by both topic and subtopic
+    subtopic_performance = (
+        UserAnswer.objects.filter(user=request.user)
+        .values(
+            'question__subtopic__topic__id', 
+            'question__subtopic__topic__name',
+            'question__subtopic__id',
+            'question__subtopic__name'
+        )
+        .annotate(
+            total=Count('id'),
+            correct=Count('id', filter=Q(is_correct=True))
+        )
+        .order_by('question__subtopic__topic__name', 'question__subtopic__name')
+    )
+
+    # 2. Restructure the flat query results into a nested dictionary
+    topic_stats = {}
+    for item in subtopic_performance:
+        topic_id = item['question__subtopic__topic__id']
+        topic_name = item['question__subtopic__topic__name']
+        
+        # If we haven't seen this topic before, initialize it
+        if topic_name not in topic_stats:
+            topic_stats[topic_name] = {
+                'id': topic_id,
+                'total': 0,
+                'correct': 0,
+                'subtopics': []
+            }
+        
+        # Add the subtopic's stats to the topic's totals
+        topic_stats[topic_name]['total'] += item['total']
+        topic_stats[topic_name]['correct'] += item['correct']
+        
+        # Calculate subtopic percentage
+        try:
+            subtopic_percentage = (item['correct'] / item['total']) * 100
+        except ZeroDivisionError:
+            subtopic_percentage = 0
+            
+        # Add the formatted subtopic data
+        topic_stats[topic_name]['subtopics'].append({
+            'name': item['question__subtopic__name'],
+            'total': item['total'],
+            'correct': item['correct'],
+            'percentage': round(subtopic_percentage, 1)
+        })
+
+    # 3. Calculate the overall percentage for each topic
+    for topic_name, data in topic_stats.items():
+        try:
+            topic_percentage = (data['correct'] / data['total']) * 100
+        except ZeroDivisionError:
+            topic_percentage = 0
+        data['percentage'] = round(topic_percentage, 1)
+    # --- END OF NEW LOGIC ---
         
     context = {
         'total_answered': total_answered,
         'correct_answered': correct_answered,
         'overall_percentage': round(overall_percentage, 1),
-        'topic_stats': topic_stats,
-        'chart_labels': json.dumps(chart_labels), # Pass data as a JSON string
+        'topic_stats': topic_stats, # This now contains the nested data
+        'chart_labels': json.dumps(chart_labels),
         'chart_data': json.dumps(chart_data),
     }
     return render(request, 'quiz/dashboard.html', context)
@@ -308,6 +337,7 @@ def quiz_player(request, question_index):
         'seconds_remaining': seconds_remaining,
     }
     return render(request, 'quiz/quiz_player.html', context)
+
 
 @login_required
 def quiz_results(request):
