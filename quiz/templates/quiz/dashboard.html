@@ -26,6 +26,37 @@
     </div>
     <hr class="my-4">
 
+    <!-- ============================================= -->
+    <!-- START OF NEW ACTION PANEL SECTION -->
+    <!-- ============================================= -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">Actionable Review</h3>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h4>Review Your Incorrect Answers</h4>
+                    {% if incorrect_questions_count > 0 %}
+                        <p class="mb-md-0">You have <strong>{{ incorrect_questions_count }}</strong> questions you've previously answered incorrectly. This is a great place to start your revision.</p>
+                    {% else %}
+                        <p class="text-muted mb-md-0">You have no incorrect answers recorded. Amazing work!</p>
+                    {% endif %}
+                </div>
+                <div class="col-md-4 text-md-end">
+                    {% if incorrect_questions_count > 0 %}
+                        <a href="{% url 'start_incorrect_quiz' %}" class="btn btn-primary btn-lg">Start Review Quiz</a>
+                    {% else %}
+                        <a href="#" class="btn btn-primary btn-lg disabled">Nothing to Review</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- ============================================= -->
+    <!-- END OF NEW ACTION PANEL SECTION -->
+    <!-- ============================================= -->
+
     <!-- Performance Chart Section -->
     <h2 class="mb-4">Performance Over Last 30 Days</h2>
     <div class="card shadow-sm mb-4">
@@ -38,9 +69,7 @@
         </div>
     </div>
 
-    <!-- ============================================= -->
-    <!-- START OF NEW ACCORDION SECTION -->
-    <!-- ============================================= -->
+    <!-- Performance by Topic Accordion Section -->
     <h2 class="mb-4">Performance by Topic</h2>
     <div class="accordion" id="performanceAccordion">
         {% if topic_stats %}
@@ -83,7 +112,6 @@
                     </div>
                 </div>
             {% empty %}
-                <!-- This empty block for the loop handles the case where topic_stats is not empty but somehow has no items -->
                  <div class="card shadow-sm">
                     <div class="card-body">
                         <p class="text-center p-3">You haven't answered any questions yet. <a href="{% url 'quiz_setup' %}">Start a quiz</a> to see your stats!</p>
@@ -98,9 +126,6 @@
             </div>
         {% endif %}
     </div>
-    <!-- ============================================= -->
-    <!-- END OF NEW ACCORDION SECTION -->
-    <!-- ============================================= -->
 {% endblock %}
 
 {% block scripts %}

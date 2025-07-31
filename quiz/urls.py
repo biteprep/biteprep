@@ -1,4 +1,4 @@
-# quiz/urls.py
+# quiz/urls.py (Complete file for Incorrect Review Feature)
 
 from django.urls import path
 from . import views
@@ -23,6 +23,8 @@ urlpatterns = [
     path('cancel/', views.cancel_page, name='cancel_page'),
     path('stripe-webhook/', views.stripe_webhook, name='stripe_webhook'),
     
-    # Dashboard action
+    # Dashboard actions
     path('dashboard/reset/', views.reset_performance, name='reset_performance'),
+    # --- NEW URL PATTERN ---
+    path('quiz/start/incorrect/', views.start_incorrect_quiz, name='start_incorrect_quiz'),
 ]
