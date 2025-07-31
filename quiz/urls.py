@@ -1,4 +1,4 @@
-# quiz/urls.py (Complete file for Incorrect Review Feature)
+# quiz/urls.py (Complete file for Flagged Question Feature)
 
 from django.urls import path
 from . import views
@@ -25,6 +25,7 @@ urlpatterns = [
     
     # Dashboard actions
     path('dashboard/reset/', views.reset_performance, name='reset_performance'),
-    # --- NEW URL PATTERN ---
     path('quiz/start/incorrect/', views.start_incorrect_quiz, name='start_incorrect_quiz'),
+    # --- NEW URL PATTERN ---
+    path('quiz/start/flagged/', views.start_flagged_quiz, name='start_flagged_quiz'),
 ]

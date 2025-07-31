@@ -26,14 +26,13 @@
     </div>
     <hr class="my-4">
 
-    <!-- ============================================= -->
-    <!-- START OF NEW ACTION PANEL SECTION -->
-    <!-- ============================================= -->
+    <!-- Action Panel Section -->
     <div class="card shadow-sm mb-4">
         <div class="card-header">
             <h3 class="mb-0">Actionable Review</h3>
         </div>
         <div class="card-body">
+            <!-- Incorrect Review Panel -->
             <div class="row align-items-center">
                 <div class="col-md-8">
                     <h4>Review Your Incorrect Answers</h4>
@@ -51,11 +50,35 @@
                     {% endif %}
                 </div>
             </div>
+
+            <hr class="my-3">
+
+            <!-- ============================================= -->
+            <!-- START OF NEW FLAGGED QUESTIONS PANEL -->
+            <!-- ============================================= -->
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h4>Review Your Flagged Questions</h4>
+                    {% if flagged_questions_count > 0 %}
+                        <p class="mb-md-0">You have <strong>{{ flagged_questions_count }}</strong> questions flagged for future review.</p>
+                    {% else %}
+                        <p class="text-muted mb-md-0">You can flag questions during a quiz to easily review them later.</p>
+                    {% endif %}
+                </div>
+                <div class="col-md-4 text-md-end">
+                    {% if flagged_questions_count > 0 %}
+                        <a href="{% url 'start_flagged_quiz' %}" class="btn btn-warning btn-lg">Review Flagged</a>
+                    {% else %}
+                        <a href="#" class="btn btn-warning btn-lg disabled">Nothing to Review</a>
+                    {% endif %}
+                </div>
+            </div>
+            <!-- ============================================= -->
+            <!-- END OF NEW FLAGGED QUESTIONS PANEL -->
+            <!-- ============================================= -->
+
         </div>
     </div>
-    <!-- ============================================= -->
-    <!-- END OF NEW ACTION PANEL SECTION -->
-    <!-- ============================================= -->
 
     <!-- Performance Chart Section -->
     <h2 class="mb-4">Performance Over Last 30 Days</h2>
@@ -90,21 +113,11 @@
                         <div class="accordion-body p-0">
                             <table class="table table-striped table-hover mb-0">
                                 <thead class="table-light">
-                                    <tr>
-                                        <th scope="col">Subtopic</th>
-                                        <th scope="col" class="text-center">Answered</th>
-                                        <th scope="col" class="text-center">Correct</th>
-                                        <th scope="col" class="text-center">Percentage</th>
-                                    </tr>
+                                    <tr><th scope="col">Subtopic</th><th scope="col" class="text-center">Answered</th><th scope="col" class="text-center">Correct</th><th scope="col" class="text-center">Percentage</th></tr>
                                 </thead>
                                 <tbody>
                                     {% for subtopic in topic_data.subtopics %}
-                                        <tr>
-                                            <td>{{ subtopic.name }}</td>
-                                            <td class="text-center">{{ subtopic.total }}</td>
-                                            <td class="text-center">{{ subtopic.correct }}</td>
-                                            <td class="text-center fw-bold">{{ subtopic.percentage }}%</td>
-                                        </tr>
+                                        <tr><td>{{ subtopic.name }}</td><td class="text-center">{{ subtopic.total }}</td><td class="text-center">{{ subtopic.correct }}</td><td class="text-center fw-bold">{{ subtopic.percentage }}%</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -112,18 +125,10 @@
                     </div>
                 </div>
             {% empty %}
-                 <div class="card shadow-sm">
-                    <div class="card-body">
-                        <p class="text-center p-3">You haven't answered any questions yet. <a href="{% url 'quiz_setup' %}">Start a quiz</a> to see your stats!</p>
-                    </div>
-                </div>
+                 <div class="card shadow-sm"><div class="card-body"><p class="text-center p-3">You haven't answered any questions yet. <a href="{% url 'quiz_setup' %}">Start a quiz</a> to see your stats!</p></div></div>
             {% endfor %}
         {% else %}
-             <div class="card shadow-sm">
-                <div class="card-body">
-                    <p class="text-center p-3">You haven't answered any questions yet. <a href="{% url 'quiz_setup' %}">Start a quiz</a> to see your stats!</p>
-                </div>
-            </div>
+             <div class="card shadow-sm"><div class="card-body"><p class="text-center p-3">You haven't answered any questions yet. <a href="{% url 'quiz_setup' %}">Start a quiz</a> to see your stats!</p></div></div>
         {% endif %}
     </div>
 {% endblock %}

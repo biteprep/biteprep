@@ -1,4 +1,4 @@
-# quiz/models.py
+# quiz/models.py (Corrected version with FlaggedQuestion at the end)
 
 from django.db import models
 from django.contrib.auth.models import User
@@ -87,7 +87,8 @@ class QuestionReport(models.Model):
     class Meta:
         unique_together = ('question', 'user')
 
-# New model for contact inquiries
+
+# Model for contact inquiries
 class ContactInquiry(models.Model):
     INQUIRY_STATUS_CHOICES = [
         ('NEW', 'New'),
@@ -107,3 +108,18 @@ class ContactInquiry(models.Model):
     
     class Meta:
         verbose_name_plural = "Contact Inquiries"
+
+
+# --- THIS MODEL HAS BEEN MOVED TO THE END OF THE FILE ---
+# Model to permanently store user's flagged questions
+class FlaggedQuestion(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Ensures a user can only flag a specific question once
+        unique_together = ('user', 'question')
+
+    def __str__(self):
+        return f"{self.user.username} flagged Q:{self.question.id}"
