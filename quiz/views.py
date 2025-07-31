@@ -1,4 +1,4 @@
-# quiz/views.py (Complete file for Step 2)
+# quiz/views.py (Complete file for Step 3)
 
 import random
 import stripe
@@ -19,7 +19,7 @@ from django.contrib import messages
 from django.urls import reverse
 
 # ===================================================================
-#  The views below this line are unchanged
+#  The views below this line are unchanged from the previous step
 # ===================================================================
 
 def landing_page(request):
@@ -111,42 +111,78 @@ def start_quiz(request):
     return redirect('quiz_player', question_index=1)
 
 # ===================================================================
-#  DEBUGGING STEP 2: Add the answer choices
+#  DEBUGGING STEP 3: Add form, POST logic, and navigator
 # ===================================================================
 @login_required
 def quiz_player(request, question_index):
-    # 1. Check if the session exists
+    # 1. Check session
     if 'quiz_context' not in request.session:
         messages.error(request, "Quiz session not found. Please start a new quiz.")
         return redirect('quiz_setup')
 
-    # 2. Get the list of question IDs from the session
-    question_ids = request.session['quiz_context'].get('question_ids', [])
+    quiz_context = request.session['quiz_context']
+    question_ids = quiz_context.get('question_ids', [])
     
-    # 3. Check if the requested question index is valid
+    # 2. Check index
     if not (0 < question_index <= len(question_ids)):
         messages.error(request, "Invalid question index.")
         return redirect('quiz_setup')
 
-    # 4. Get the specific ID for the current question
     question_id = question_ids[question_index - 1]
-    
-    # 5. Try to fetch the question object from the database
-    # We add prefetch_related('answers') for efficiency
+
+    # --- START OF NEW LOGIC FOR THIS STEP ---
+    # 3. Handle POST request for navigation
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        # We'll just handle navigation for now, not answer submission
+        if action == 'prev' and question_index > 1:
+            return redirect('quiz_player', question_index=question_index - 1)
+        elif action == 'next' and question_index < len(question_ids):
+            return redirect('quiz_player', question_index=question_index + 1)
+        elif action == 'finish':
+            return redirect('quiz_results') # Will go to a dummy page for now
+    # --- END OF NEW LOGIC FOR THIS STEP ---
+
+    # 4. Fetch question from DB
     try:
         question = Question.objects.prefetch_related('answers').get(pk=question_id)
     except Question.DoesNotExist:
         messages.error(request, "The requested question could not be found in the database.")
         return redirect('quiz_setup')
 
-    # 6. If all the above steps succeed, render the next-step template
+    # --- START OF NEW LOGIC FOR THIS STEP ---
+    # 5. Build the navigator items
+    navigator_items = []
+    # This safely gets user_answers, defaulting to an empty dict if it doesn't exist yet
+    user_answers = quiz_context.get('user_answers', {}) 
+
+    for i, q_id in enumerate(question_ids):
+        idx = i + 1
+        button_class = 'btn-outline-secondary' # Default button style
+        if str(q_id) in user_answers:
+            button_class = 'btn-success' # Mark as answered if present in user_answers
+        
+        if idx == question_index:
+            button_class = button_class.replace('btn-outline-', 'btn-') + ' active'
+
+        navigator_items.append({
+            'index': idx,
+            'class': button_class,
+            'is_flagged': False # Not testing flags yet
+        })
+    # --- END OF NEW LOGIC FOR THIS STEP ---
+
+    # 6. Render template
     context = {
         'question': question,
         'question_index': question_index,
-        'test_message': 'DEBUG STEP 2: Success! The view loaded the question AND its related answers.'
+        'total_questions': len(question_ids), # Add total_questions back
+        'navigator_items': navigator_items, # Add navigator_items
+        'test_message': 'DEBUG STEP 3: Success! POST logic and navigator were added.'
     }
     return render(request, 'quiz/quiz_player.html', context)
 # ===================================================================
+
 
 @login_required
 def quiz_results(request):
@@ -164,7 +200,7 @@ def report_question(request):
         return JsonResponse({'status': 'success'})
     return JsonResponse({'status': 'error'}, status=400)
 
-# The stripe views are included for completeness but are not part of the test
+# The stripe views are included for completeness
 @login_required
 def create_checkout_session(request):
     stripe.api_key = settings.STRIPE_SECRET_KEY

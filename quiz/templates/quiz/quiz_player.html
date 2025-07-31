@@ -3,41 +3,71 @@
 {% block title %}Question {{ question_index }} - Debugging{% endblock %}
 
 {% block content %}
-    <div class="container">
-        <h1 class="mt-4">Debugging Quiz Player - Step 2</h1>
-        <hr>
+    <h1 class="mt-4">Debugging Quiz Player - Step 3</h1>
+    <hr>
+    
+    <!-- We are adding the FORM tag back in -->
+    <form id="quiz-player-form" method="POST" action="{% url 'quiz_player' question_index=question_index %}">
+        {% csrf_token %}
+        <div class="row">
+            <!-- Main Question Area -->
+            <div class="col-lg-9">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-light">
+                        <span class="fw-bold">Question {{ question_index }} of {{ total_questions }}</span>
+                    </div>
 
-        <div class="card">
-            <div class="card-header">
-                <strong>Question {{ question_index }}</strong>
-            </div>
-            <div class="card-body">
-                <p class="fs-5">{{ question.question_text|linebreaksbr }}</p>
-                
-                <!-- THIS IS THE NEW SECTION WE ARE ADDING -->
-                <h6 class="mt-4">Answer Choices:</h6>
-                <div class="list-group">
-                    {% for answer in question.answers.all %}
-                        <label class="list-group-item list-group-item-action">
-                            <input class="form-check-input me-2" type="radio" name="answer" value="{{ answer.id }}" disabled>
-                            {{ answer.answer_text }}
-                        </label>
-                    {% empty %}
-                        <p class="text-danger">This question appears to have no answer options.</p>
-                    {% endfor %}
+                    <div class="card-body">
+                        <p class="card-text fs-5">{{ question.question_text|linebreaksbr }}</p>
+                        
+                        <div class="list-group mt-4">
+                            {% for answer in question.answers.all %}
+                                <label class="list-group-item list-group-item-action">
+                                    <input class="form-check-input me-2" type="radio" name="answer" value="{{ answer.id }}">
+                                    {{ answer.answer_text }}
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="card-footer d-flex justify-content-between align-items-center">
+                        <!-- Navigation buttons -->
+                        <button type="submit" name="action" value="prev" class="btn btn-outline-secondary {% if question_index <= 1 %}disabled{% endif %}">← Previous</button>
+                        <button type="submit" name="action" value="next" class="btn btn-primary {% if question_index >= total_questions %}disabled{% endif %}">Next →</button>
+                    </div>
                 </div>
-                <!-- END OF NEW SECTION -->
-
+            </div>
+            <!-- Navigator -->
+            <div class="col-lg-3">
+                <div class="card shadow-sm">
+                    <div class="card-header fw-bold">Navigator</div>
+                    <div class="card-body" style="max-height: 60vh; overflow-y: auto;">
+                        <div class="d-flex flex-wrap">
+                            {% for item in navigator_items %}
+                                <a href="{% url 'quiz_player' question_index=item.index %}" 
+                                   class="btn {{ item.class }} me-1 mb-1" 
+                                   style="width: 45px; height: 45px;">
+                                    {{ item.index }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-grid">
+                            <button type="submit" name="action" value="finish" class="btn btn-danger">End & See Results</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+    </form>
 
-        <div class="alert alert-info mt-4">
-            <strong>Test Status:</strong><br>
-            <p class="mb-0">{{ test_message }}</p>
-        </div>
+    <div class="alert alert-info mt-4">
+        <strong>Test Status:</strong><br>
+        <p class="mb-0">{{ test_message }}</p>
+    </div>
 
-        <div class="alert alert-secondary mt-2">
-            <p class="mb-0">If you can see the question text, a list of answer options with radio buttons, and the success message above, it means this test has passed. Please let me know.</p>
-        </div>
+    <div class="alert alert-secondary mt-2">
+        <p class="mb-0">If you can see the full quiz layout with the navigator and the success message, the test has passed. Try clicking "Next" and "Previous" to confirm they work.</p>
     </div>
 {% endblock %}
