@@ -1,11 +1,11 @@
-# quiz/views.py (DEFINITIVE ERROR-CATCHING VERSION - COMPLETE FILE)
+# quiz/views.py (FINAL, PRODUCTION-READY VERSION)
 
 import random
 import stripe
 import json
 import os
 from datetime import date, datetime, timedelta
-import traceback # IMPORT THE TRACEBACK MODULE
+import traceback
 
 from django.shortcuts import render, redirect
 from django.conf import settings
@@ -16,7 +16,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.contrib import messages
 from django.urls import reverse
-from django.utils import timezone # THE CRITICAL IMPORT
+from django.utils import timezone
 
 from .models import Category, Question, Answer, UserAnswer, QuestionReport, ContactInquiry, Topic
 from users.models import Profile
@@ -175,121 +175,105 @@ def start_quiz(request):
 
 @login_required
 def quiz_player(request, question_index):
-    # ===================================================================
-    #  THIS IS THE CRITICAL CHANGE: WRAP EVERYTHING IN A TRY/EXCEPT BLOCK
-    # ===================================================================
-    try:
-        if 'quiz_context' not in request.session:
-            messages.error(request, "Quiz session not found. Please start a new quiz.")
-            return redirect('quiz_setup')
+    if 'quiz_context' not in request.session:
+        messages.error(request, "Quiz session not found. Please start a new quiz.")
+        return redirect('quiz_setup')
 
-        quiz_context = request.session['quiz_context']
-        question_ids = quiz_context.get('question_ids', [])
-        quiz_mode = quiz_context.get('mode', 'quiz')
+    quiz_context = request.session['quiz_context']
+    question_ids = quiz_context.get('question_ids', [])
+    quiz_mode = quiz_context.get('mode', 'quiz')
+    
+    if not (0 < question_index <= len(question_ids)):
+        return redirect('quiz_results')
+
+    question_id = question_ids[question_index - 1]
+    is_feedback_mode = False
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
         
-        if not (0 < question_index <= len(question_ids)):
-            return redirect('quiz_results')
-
-        question_id = question_ids[question_index - 1]
-        is_feedback_mode = False
-
-        if request.method == 'POST':
-            action = request.POST.get('action')
-            
-            submitted_answer_id_str = request.POST.get('answer')
-            if submitted_answer_id_str:
-                try:
-                    answer_obj = Answer.objects.get(id=int(submitted_answer_id_str))
-                    quiz_context['user_answers'][str(question_id)] = { 'answer_id': answer_obj.id, 'is_correct': answer_obj.is_correct }
-                except (Answer.DoesNotExist, ValueError):
-                    pass
-            
-            if action == 'toggle_flag':
-                flagged = quiz_context.get('flagged_questions', [])
-                if question_id in flagged:
-                    flagged.remove(question_id)
-                else:
-                    flagged.append(question_id)
-                quiz_context['flagged_questions'] = flagged
-
-            request.session['quiz_context'] = quiz_context
-            request.session.modified = True
-
-            if action == 'submit_answer' and quiz_mode == 'quiz':
-                is_feedback_mode = True
-            elif action == 'prev' and question_index > 1:
-                return redirect('quiz_player', question_index=question_index - 1)
-            elif action == 'next' and question_index < len(question_ids):
-                return redirect('quiz_player', question_index=question_index + 1)
-            elif action == 'finish':
-                return redirect('quiz_results')
-        
-        question = Question.objects.select_related('subtopic__topic').prefetch_related('answers').get(pk=question_id)
-        
-        seconds_remaining = None
-        if 'start_time' in quiz_context:
-            start_time = datetime.fromisoformat(quiz_context['start_time'])
-            duration = timedelta(seconds=quiz_context.get('duration_seconds', 0))
-            time_passed = timezone.now() - start_time
-            seconds_remaining = max(0, int((duration - time_passed).total_seconds()))
-            if seconds_remaining <= 0 and quiz_mode == 'test':
-                messages.info(request, "Time is up! The quiz has been automatically submitted.")
-                return redirect('quiz_results')
-        
-        navigator_items = []
-        user_answers = quiz_context.get('user_answers', {})
-        flagged_questions = quiz_context.get('flagged_questions', [])
-        
-        for i, q_id in enumerate(question_ids):
-            idx = i + 1
-            answer_info = user_answers.get(str(q_id))
-            
-            button_class = 'btn-outline-secondary'
-            if answer_info:
-                if quiz_mode == 'quiz':
-                    button_class = 'btn-success' if answer_info.get('is_correct') else 'btn-danger'
-                else:
-                    button_class = 'btn-success'
-            
-            if idx == question_index:
-                button_class = button_class.replace('btn-outline-', 'btn-') + ' active'
-
-            navigator_items.append({ 'index': idx, 'class': button_class, 'is_flagged': q_id in flagged_questions })
-        
-        user_answer_info = user_answers.get(str(question_id))
-        if not is_feedback_mode and user_answer_info and quiz_mode == 'quiz':
-            is_feedback_mode = True
-
-        user_selected_answer_id = user_answer_info.get('answer_id') if user_answer_info else None
-        user_answer_obj = None
-        if is_feedback_mode and user_selected_answer_id:
+        submitted_answer_id_str = request.POST.get('answer')
+        if submitted_answer_id_str:
             try:
-                user_answer_obj = Answer.objects.get(id=user_selected_answer_id)
-            except Answer.DoesNotExist:
+                answer_obj = Answer.objects.get(id=int(submitted_answer_id_str))
+                quiz_context['user_answers'][str(question_id)] = { 'answer_id': answer_obj.id, 'is_correct': answer_obj.is_correct }
+            except (Answer.DoesNotExist, ValueError):
                 pass
-
-        context = {
-            'question': question, 'question_index': question_index, 'total_questions': len(question_ids),
-            'quiz_context': quiz_context, 'is_feedback_mode': is_feedback_mode,
-            'user_selected_answer_id': user_selected_answer_id,
-            'user_answer': user_answer_obj,
-            'is_last_question': question_index == len(question_ids),
-            'navigator_items': navigator_items,
-            'seconds_remaining': seconds_remaining,
-        }
-        return render(request, 'quiz/quiz_player.html', context)
-
-    except Exception as e:
-        # THIS IS THE ERROR CATCHER. IT WILL PRINT THE FULL ERROR TO YOUR RENDER LOGS.
-        print("!!!!!!!!!!!!! AN EXCEPTION OCCURRED IN QUIZ_PLAYER !!!!!!!!!!!!!")
-        print(f"ERROR TYPE: {type(e).__name__}")
-        print(f"ERROR DETAILS: {e}")
-        traceback.print_exc()
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         
-        # We also show a user-friendly message and redirect them to a safe page.
-        messages.error(request, "An unexpected error occurred while loading the quiz. Our team has been notified. Please try again later.")
-        return redirect('dashboard')
+        if action == 'toggle_flag':
+            flagged = quiz_context.get('flagged_questions', [])
+            if question_id in flagged:
+                flagged.remove(question_id)
+            else:
+                flagged.append(question_id)
+            quiz_context['flagged_questions'] = flagged
+
+        request.session['quiz_context'] = quiz_context
+        request.session.modified = True
+
+        if action == 'submit_answer' and quiz_mode == 'quiz':
+            is_feedback_mode = True
+        elif action == 'prev' and question_index > 1:
+            return redirect('quiz_player', question_index=question_index - 1)
+        elif action == 'next' and question_index < len(question_ids):
+            return redirect('quiz_player', question_index=question_index + 1)
+        elif action == 'finish':
+            return redirect('quiz_results')
+    
+    question = Question.objects.select_related('subtopic__topic').prefetch_related('answers').get(pk=question_id)
+    
+    seconds_remaining = None
+    if 'start_time' in quiz_context:
+        start_time = datetime.fromisoformat(quiz_context['start_time'])
+        duration = timedelta(seconds=quiz_context.get('duration_seconds', 0))
+        time_passed = timezone.now() - start_time
+        seconds_remaining = max(0, int((duration - time_passed).total_seconds()))
+        if seconds_remaining <= 0 and quiz_mode == 'test':
+            messages.info(request, "Time is up! The quiz has been automatically submitted.")
+            return redirect('quiz_results')
+    
+    navigator_items = []
+    user_answers = quiz_context.get('user_answers', {})
+    flagged_questions = quiz_context.get('flagged_questions', [])
+    
+    for i, q_id in enumerate(question_ids):
+        idx = i + 1
+        answer_info = user_answers.get(str(q_id))
+        
+        button_class = 'btn-outline-secondary'
+        if answer_info:
+            if quiz_mode == 'quiz':
+                button_class = 'btn-success' if answer_info.get('is_correct') else 'btn-danger'
+            else: # Test mode
+                button_class = 'btn-success'
+        
+        if idx == question_index:
+            button_class = button_class.replace('btn-outline-', 'btn-') + ' active'
+
+        navigator_items.append({ 'index': idx, 'class': button_class, 'is_flagged': q_id in flagged_questions })
+    
+    user_answer_info = user_answers.get(str(question_id))
+    if not is_feedback_mode and user_answer_info and quiz_mode == 'quiz':
+        is_feedback_mode = True
+
+    user_selected_answer_id = user_answer_info.get('answer_id') if user_answer_info else None
+    user_answer_obj = None
+    if is_feedback_mode and user_selected_answer_id:
+        try:
+            user_answer_obj = Answer.objects.get(id=user_selected_answer_id)
+        except Answer.DoesNotExist:
+            pass
+
+    context = {
+        'question': question, 'question_index': question_index, 'total_questions': len(question_ids),
+        'quiz_context': quiz_context, 'is_feedback_mode': is_feedback_mode,
+        'user_selected_answer_id': user_selected_answer_id,
+        'user_answer': user_answer_obj,
+        'is_last_question': question_index == len(question_ids),
+        'navigator_items': navigator_items,
+        'seconds_remaining': seconds_remaining,
+    }
+    return render(request, 'quiz/quiz_player.html', context)
 
 
 @login_required
