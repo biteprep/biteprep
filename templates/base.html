@@ -19,11 +19,7 @@
             margin-top: 2rem;
             margin-bottom: 2rem;
         }
-        .alert {
-            border-radius: 0;
-            margin-bottom: 0;
-            text-align: center;
-        }
+        /* Removed the alert styling from base to allow for more flexible alerts per page */
     </style>
     {% block head_styles %}{% endblock %}
 </head>
@@ -58,21 +54,31 @@
         </div>
     </nav>
     
-    {% if messages %}
-        <div>
-            {% for message in messages %}
-            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    <div class="container-fluid">
+        {% if messages %}
+            <div class="row">
+                <div class="col-md-12">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show my-2" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
-            {% endfor %}
-        </div>
-    {% endif %}
+        {% endif %}
+    </div>
 
     <main class="container content-container">
         {% block content %}{% endblock %}
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <!-- ============================================= -->
+    <!-- THIS IS THE NEWLY ADDED BLOCK FOR CUSTOM SCRIPTS -->
+    <!-- ============================================= -->
+    {% block scripts %}{% endblock %}
+
 </body>
 </html>
