@@ -1,4 +1,4 @@
-# quiz/views.py
+# quiz/views.py (Complete file for Step 2)
 
 import random
 import stripe
@@ -84,7 +84,6 @@ def reset_performance(request):
 
 @login_required
 def quiz_setup(request):
-    # This view is simplified to only pass question IDs, removing other complexities for the test
     if request.method == 'POST':
         selected_subtopic_ids = request.POST.getlist('subtopics')
         if not selected_subtopic_ids:
@@ -99,7 +98,6 @@ def quiz_setup(request):
             messages.info(request, "No questions found for your selected topics.")
             return redirect('quiz_setup')
             
-        # Only store the question IDs in the context for this test
         quiz_context = { 'question_ids': question_ids }
         request.session['quiz_context'] = quiz_context
         return redirect('start_quiz')
@@ -110,11 +108,10 @@ def quiz_setup(request):
 
 @login_required
 def start_quiz(request):
-    # This view simply redirects to the first question
     return redirect('quiz_player', question_index=1)
 
 # ===================================================================
-#  DEBUGGING STEP 1: A minimal quiz_player to find the failure point
+#  DEBUGGING STEP 2: Add the answer choices
 # ===================================================================
 @login_required
 def quiz_player(request, question_index):
@@ -135,17 +132,18 @@ def quiz_player(request, question_index):
     question_id = question_ids[question_index - 1]
     
     # 5. Try to fetch the question object from the database
+    # We add prefetch_related('answers') for efficiency
     try:
-        question = Question.objects.get(pk=question_id)
+        question = Question.objects.prefetch_related('answers').get(pk=question_id)
     except Question.DoesNotExist:
         messages.error(request, "The requested question could not be found in the database.")
         return redirect('quiz_setup')
 
-    # 6. If all the above steps succeed, render a minimal template
+    # 6. If all the above steps succeed, render the next-step template
     context = {
         'question': question,
         'question_index': question_index,
-        'test_message': 'DEBUG STEP 1: Success! The view loaded and the question was fetched.'
+        'test_message': 'DEBUG STEP 2: Success! The view loaded the question AND its related answers.'
     }
     return render(request, 'quiz/quiz_player.html', context)
 # ===================================================================
@@ -166,6 +164,7 @@ def report_question(request):
         return JsonResponse({'status': 'success'})
     return JsonResponse({'status': 'error'}, status=400)
 
+# The stripe views are included for completeness but are not part of the test
 @login_required
 def create_checkout_session(request):
     stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -180,6 +179,7 @@ def create_checkout_session(request):
         )
         return redirect(checkout_session.url)
     except Exception as e:
+        messages.error(request, f"Could not create checkout session: {e}")
         return redirect('membership_page')
 
 def success_page(request):

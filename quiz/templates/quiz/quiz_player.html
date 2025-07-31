@@ -4,7 +4,7 @@
 
 {% block content %}
     <div class="container">
-        <h1 class="mt-4">Debugging Quiz Player - Step 1</h1>
+        <h1 class="mt-4">Debugging Quiz Player - Step 2</h1>
         <hr>
 
         <div class="card">
@@ -12,11 +12,22 @@
                 <strong>Question {{ question_index }}</strong>
             </div>
             <div class="card-body">
-                {% if question %}
-                    <p class="fs-5">{{ question.question_text|linebreaksbr }}</p>
-                {% else %}
-                    <p class="text-danger">Error: The 'question' object was not provided to the template.</p>
-                {% endif %}
+                <p class="fs-5">{{ question.question_text|linebreaksbr }}</p>
+                
+                <!-- THIS IS THE NEW SECTION WE ARE ADDING -->
+                <h6 class="mt-4">Answer Choices:</h6>
+                <div class="list-group">
+                    {% for answer in question.answers.all %}
+                        <label class="list-group-item list-group-item-action">
+                            <input class="form-check-input me-2" type="radio" name="answer" value="{{ answer.id }}" disabled>
+                            {{ answer.answer_text }}
+                        </label>
+                    {% empty %}
+                        <p class="text-danger">This question appears to have no answer options.</p>
+                    {% endfor %}
+                </div>
+                <!-- END OF NEW SECTION -->
+
             </div>
         </div>
 
@@ -26,7 +37,7 @@
         </div>
 
         <div class="alert alert-secondary mt-2">
-            <p class="mb-0">If you can see this page with the question text and the success message above, it means this test has passed. Please copy this entire page's content and send it to me.</p>
+            <p class="mb-0">If you can see the question text, a list of answer options with radio buttons, and the success message above, it means this test has passed. Please let me know.</p>
         </div>
     </div>
 {% endblock %}
