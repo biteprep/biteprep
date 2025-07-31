@@ -70,9 +70,8 @@
                         <button type="submit" name="action" value="prev" class="btn btn-outline-secondary {% if question_index <= 1 %}disabled{% endif %}">← Previous</button>
                         <div>
                             <button type="button" class="btn btn-outline-danger btn-sm me-2" data-bs-toggle="modal" data-bs-target="#reportModal">Report</button>
-                            <!-- FIX #2: Use the safe pre-processed variable -->
-                            <button type="submit" name="action" value="toggle_flag" class="btn {% if is_question_flagged %}btn-warning{% else %}btn-outline-warning{% endif %}">
-                                {% if is_question_flagged %}Unflag{% else %}Flag{% endif %}
+                            <button type="submit" name="action" value="toggle_flag" class="btn {% if question.id in quiz_context.flagged_questions %}btn-warning{% else %}btn-outline-warning{% endif %}">
+                                {% if question.id in quiz_context.flagged_questions %}Unflag{% else %}Flag{% endif %}
                             </button>
                             {% if quiz_context.mode == 'quiz' %}
                                 <button type="submit" name="action" value="submit_answer" class="btn btn-success ms-2">Submit Answer</button>
@@ -109,16 +108,90 @@
     </div>
 </form>
 
-<!-- Modals (content is unchanged) -->
-<div class="modal fade" id="imageModal">...</div>
-<div class="modal fade" id="reportModal">...</div>
+<!-- Modals -->
+<div class="modal fade" id="imageModal"><div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Question Image</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-center"><img src="{{ question.question_image.url }}" class="img-fluid"></div></div></div></div>
+<div class="modal fade" id="reportModal"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Report an Issue</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><form id="report-question-form"><div class="modal-body"><div class="mb-3"><label for="report-reason" class="form-label">What is the issue?</label><textarea class="form-control" id="report-reason" rows="4" required></textarea></div><div id="report-feedback-message" class="text-center"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="button" class="btn btn-primary" id="submit-report-btn">Submit Report</button></div></form></div></div></div>
 
 <!-- Script tags to pass data to JavaScript -->
-<!-- FIX #1: Use the safe pre-processed variable -->
-{{ seconds_remaining_json|json_script:"timer-data" }}
+{{ seconds_remaining|json_script:"timer-data" }}
 {{ question.id|json_script:"question-id-data" }}
 
 <script>
-    // The existing Javascript for timer and AJAX reporting remains unchanged.
+document.addEventListener('DOMContentLoaded', function() {
+    // TIMER SCRIPT
+    const timerDataEl = document.getElementById('timer-data');
+    if (timerDataEl) {
+        let secondsRemaining = JSON.parse(timerDataEl.textContent);
+        const timerDisplay = document.getElementById('timer');
+        if (secondsRemaining !== null && timerDisplay) {
+            const timerInterval = setInterval(() => {
+                if (secondsRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    timerDisplay.textContent = 'Time Up!';
+                    document.getElementById('finish-quiz-button').click();
+                    return;
+                }
+                secondsRemaining--;
+                const minutes = Math.floor(secondsRemaining / 60);
+                const seconds = secondsRemaining % 60;
+                timerDisplay.textContent = `Time Left: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+    }
+
+    // AJAX Report Submission
+    const reportBtn = document.getElementById('submit-report-btn');
+    // MINOR BUG FIX: Add a hidden input with the token in the form and get it with JS
+    const csrfToken = document.querySelector('form#quiz-player-form [name=csrfmiddlewaretoken]').value;
+
+    if(reportBtn) {
+        reportBtn.addEventListener('click', function() {
+            const reason = document.getElementById('report-reason').value;
+            const questionId = JSON.parse(document.getElementById('question-id-data').textContent);
+            const feedbackEl = document.getElementById('report-feedback-message');
+            
+            if (!reason.trim()) {
+                feedbackEl.textContent = 'Please provide a reason for the report.';
+                feedbackEl.className = 'text-danger';
+                return;
+            }
+
+            fetch("{% url 'report_question' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken // Use the token variable here
+                },
+                body: JSON.stringify({
+                    question_id: questionId,
+                    reason: reason
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    feedbackEl.textContent = data.message;
+                    feedbackEl.className = 'text-success';
+                    document.getElementById('report-reason').value = ''; // Clear textarea
+                    setTimeout(() => {
+                        const modalEl = document.getElementById('reportModal');
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) {
+                           modal.hide();
+                        }
+                        feedbackEl.textContent = '';
+                    }, 2000);
+                } else {
+                    feedbackEl.textContent = data.message || 'An error occurred.';
+                    feedbackEl.className = 'text-danger';
+                }
+            })
+            .catch(error => {
+                feedbackEl.textContent = 'A network error occurred.';
+                feedbackEl.className = 'text-danger';
+            });
+        });
+    }
+});
 </script>
 {% endblock %}
