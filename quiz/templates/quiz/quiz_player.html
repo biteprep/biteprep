@@ -3,10 +3,9 @@
 {% block title %}Question {{ question_index }} - Debugging{% endblock %}
 
 {% block content %}
-    <h1 class="mt-4">Debugging Quiz Player - Step 3</h1>
+    <h1 class="mt-4">Debugging Quiz Player - Step 4</h1>
     <hr>
     
-    <!-- We are adding the FORM tag back in -->
     <form id="quiz-player-form" method="POST" action="{% url 'quiz_player' question_index=question_index %}">
         {% csrf_token %}
         <div class="row">
@@ -23,7 +22,8 @@
                         <div class="list-group mt-4">
                             {% for answer in question.answers.all %}
                                 <label class="list-group-item list-group-item-action">
-                                    <input class="form-check-input me-2" type="radio" name="answer" value="{{ answer.id }}">
+                                    <!-- This 'if' statement re-checks the button if an answer was saved -->
+                                    <input class="form-check-input me-2" type="radio" name="answer" value="{{ answer.id }}" {% if user_selected_answer_id == answer.id %}checked{% endif %}>
                                     {{ answer.answer_text }}
                                 </label>
                             {% endfor %}
@@ -31,8 +31,11 @@
                     </div>
 
                     <div class="card-footer d-flex justify-content-between align-items-center">
-                        <!-- Navigation buttons -->
                         <button type="submit" name="action" value="prev" class="btn btn-outline-secondary {% if question_index <= 1 %}disabled{% endif %}">← Previous</button>
+                        
+                        <!-- ADDING THE SUBMIT BUTTON BACK IN -->
+                        <button type="submit" name="action" value="submit_answer" class="btn btn-success">Submit Answer</button>
+
                         <button type="submit" name="action" value="next" class="btn btn-primary {% if question_index >= total_questions %}disabled{% endif %}">Next →</button>
                     </div>
                 </div>
@@ -54,7 +57,7 @@
                     </div>
                     <div class="card-footer">
                         <div class="d-grid">
-                            <button type="submit" name="action" value="finish" class="btn btn-danger">End & See Results</button>
+                            <button type="submit" name="action" value="finish" class="btn btn.danger">End & See Results</button>
                         </div>
                     </div>
                 </div>
@@ -68,6 +71,6 @@
     </div>
 
     <div class="alert alert-secondary mt-2">
-        <p class="mb-0">If you can see the full quiz layout with the navigator and the success message, the test has passed. Try clicking "Next" and "Previous" to confirm they work.</p>
+        <p class="mb-0">If the page loads, select an answer and click "Submit Answer". The page should reload, your answer should stay selected, and the navigator button for this question should turn green (for correct) or red (for incorrect). If this works, the test has passed.</p>
     </div>
 {% endblock %}

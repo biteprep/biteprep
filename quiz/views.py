@@ -1,4 +1,4 @@
-# quiz/views.py (Complete file for Step 3)
+# quiz/views.py (Complete file for Step 4)
 
 import random
 import stripe
@@ -19,7 +19,7 @@ from django.contrib import messages
 from django.urls import reverse
 
 # ===================================================================
-#  The views below this line are unchanged from the previous step
+#  The views below this line are unchanged
 # ===================================================================
 
 def landing_page(request):
@@ -111,7 +111,7 @@ def start_quiz(request):
     return redirect('quiz_player', question_index=1)
 
 # ===================================================================
-#  DEBUGGING STEP 3: Add form, POST logic, and navigator
+#  DEBUGGING STEP 4: Add answer submission logic
 # ===================================================================
 @login_required
 def quiz_player(request, question_index):
@@ -130,18 +130,46 @@ def quiz_player(request, question_index):
 
     question_id = question_ids[question_index - 1]
 
-    # --- START OF NEW LOGIC FOR THIS STEP ---
-    # 3. Handle POST request for navigation
+    # 3. Handle POST request
     if request.method == 'POST':
         action = request.POST.get('action')
-        # We'll just handle navigation for now, not answer submission
+        
+        # --- START OF NEW LOGIC FOR THIS STEP ---
+        # Get the ID of the answer the user submitted
+        submitted_answer_id_str = request.POST.get('answer')
+
+        # If an answer was submitted, process and save it to the session
+        if submitted_answer_id_str:
+            try:
+                # Find the Answer object in the database
+                answer_obj = Answer.objects.get(id=int(submitted_answer_id_str))
+                # Safely get or create the user_answers dictionary
+                if 'user_answers' not in quiz_context:
+                    quiz_context['user_answers'] = {}
+                # Save the answer info
+                quiz_context['user_answers'][str(question_id)] = {
+                    'answer_id': answer_obj.id,
+                    'is_correct': answer_obj.is_correct
+                }
+                # IMPORTANT: Save the changes back to the session
+                request.session['quiz_context'] = quiz_context
+                request.session.modified = True
+            except (Answer.DoesNotExist, ValueError):
+                # If the answer ID is invalid for some reason, just ignore it
+                pass
+        # --- END OF NEW LOGIC FOR THIS STEP ---
+
+        # Handle navigation
         if action == 'prev' and question_index > 1:
             return redirect('quiz_player', question_index=question_index - 1)
         elif action == 'next' and question_index < len(question_ids):
             return redirect('quiz_player', question_index=question_index + 1)
         elif action == 'finish':
-            return redirect('quiz_results') # Will go to a dummy page for now
-    # --- END OF NEW LOGIC FOR THIS STEP ---
+            return redirect('quiz_results')
+        # If the action was 'submit_answer', we just want to stay on the same page
+        # The page will reload, and the navigator will be updated.
+        elif action == 'submit_answer':
+            return redirect('quiz_player', question_index=question_index)
 
     # 4. Fetch question from DB
     try:
@@ -150,35 +178,33 @@ def quiz_player(request, question_index):
         messages.error(request, "The requested question could not be found in the database.")
         return redirect('quiz_setup')
 
-    # --- START OF NEW LOGIC FOR THIS STEP ---
     # 5. Build the navigator items
     navigator_items = []
-    # This safely gets user_answers, defaulting to an empty dict if it doesn't exist yet
     user_answers = quiz_context.get('user_answers', {}) 
-
     for i, q_id in enumerate(question_ids):
         idx = i + 1
-        button_class = 'btn-outline-secondary' # Default button style
-        if str(q_id) in user_answers:
-            button_class = 'btn-success' # Mark as answered if present in user_answers
+        button_class = 'btn-outline-secondary'
+        
+        # This is where the navigator button color is determined
+        answer_info = user_answers.get(str(q_id))
+        if answer_info:
+            # If the answer is correct, green. If incorrect, red.
+            button_class = 'btn-success' if answer_info.get('is_correct') else 'btn-danger'
         
         if idx == question_index:
             button_class = button_class.replace('btn-outline-', 'btn-') + ' active'
 
-        navigator_items.append({
-            'index': idx,
-            'class': button_class,
-            'is_flagged': False # Not testing flags yet
-        })
-    # --- END OF NEW LOGIC FOR THIS STEP ---
+        navigator_items.append({ 'index': idx, 'class': button_class, 'is_flagged': False })
 
     # 6. Render template
     context = {
         'question': question,
         'question_index': question_index,
-        'total_questions': len(question_ids), # Add total_questions back
-        'navigator_items': navigator_items, # Add navigator_items
-        'test_message': 'DEBUG STEP 3: Success! POST logic and navigator were added.'
+        'total_questions': len(question_ids),
+        'navigator_items': navigator_items,
+        # Check if the current question has been answered to re-select the radio button
+        'user_selected_answer_id': user_answers.get(str(question_id), {}).get('answer_id'),
+        'test_message': 'DEBUG STEP 4: Success! Answer submission logic added.'
     }
     return render(request, 'quiz/quiz_player.html', context)
 # ===================================================================
