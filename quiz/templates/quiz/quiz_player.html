@@ -12,7 +12,9 @@
                 <div class="card-header bg-light">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="fw-bold">Question {{ question_index }} of {{ total_questions }}</span>
-                        {% if seconds_remaining is not None and quiz_context.mode == 'test' %}
+                        
+                        <!-- THIS IS THE CORRECTED LINE -->
+                        {% if seconds_remaining is not None %}
                             <span id="timer" class="badge bg-danger fs-6">Time Left: --:--</span>
                         {% endif %}
                     </div>
