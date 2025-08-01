@@ -4,22 +4,48 @@
 {% block title %}Contact Us - BitePrep{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 700px;">
-    <div class="text-center">
+<div class="container">
+    <div class="text-center mb-5">
         <h1>Contact Us</h1>
-        <p class="lead">Have a question or need some help? Fill out the form below and we'll get back to you as soon as possible.</p>
+        <p class="lead">Have a question or need some help? We'd love to hear from you.</p>
     </div>
-    <hr class="my-4">
 
-    <div class="card shadow-sm">
-        <div class="card-body p-4">
-            <form method="post">
-                {% csrf_token %}
-                {{ form|crispy }}
-                <div class="d-grid mt-4">
-                    <button type="submit" class="btn btn-primary btn-lg">Send Message</button>
+    <div class="row g-5">
+        <!-- Contact Form Column -->
+        <div class="col-md-7">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h3 class="card-title text-center mb-4"><i class="bi bi-envelope-paper"></i> Send a Message</h3>
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">Send Message</button>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
+        </div>
+
+        <!-- Contact Info Column -->
+        <div class="col-md-5">
+            <h4>Get in Touch</h4>
+            <p>You can reach us directly via email for any specific inquiries. We aim to respond to all messages within 24-48 hours.</p>
+            <hr>
+            <ul class="list-unstyled">
+                <li class="mb-3">
+                    <strong><i class="bi bi-question-circle-fill text-primary me-2"></i> General Support:</strong><br>
+                    <a href="mailto:support@biteprep.com">support@biteprep.com</a>
+                </li>
+                <li class="mb-3">
+                    <strong><i class="bi bi-cash-coin text-primary me-2"></i> Billing & Subscriptions:</strong><br>
+                    <a href="mailto:billing@biteprep.com">billing@biteprep.com</a>
+                </li>
+                <li>
+                    <strong><i class="bi bi-book-half text-primary me-2"></i> Content & Feedback:</strong><br>
+                    <a href="mailto:content@biteprep.com">content@biteprep.com</a>
+                </li>
+            </ul>
         </div>
     </div>
 </div>
