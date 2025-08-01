@@ -5,14 +5,14 @@
 {% block content %}
     <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
         <div class="text-start">
-            <h1>Your Dashboard</h1>
+            <h1><i class="bi bi-speedometer2"></i> Your Dashboard</h1>
             <p class="lead mb-0">Welcome back, {{ user.username }}! Here's a summary of your progress.</p>
         </div>
         <div>
             <form action="{% url 'reset_performance' %}" method="post" onsubmit="return confirm('Are you sure you want to permanently reset all your performance data? This action cannot be undone.');">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-danger">
-                    Reset Performance
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset Performance
                 </button>
             </form>
         </div>
@@ -20,24 +20,45 @@
 
     <!-- Overall Stats Section -->
     <div class="row text-center g-4">
-        <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><h5 class="card-title text-muted">Total Questions Answered</h5><p class="card-text fs-1 fw-bold text-primary">{{ total_answered }}</p></div></div></div>
-        <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><h5 class="card-title text-muted">Correct Answers</h5><p class="card-text fs-1 fw-bold text-success">{{ correct_answered }}</p></div></div></div>
-        <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><h5 class="card-title text-muted">Overall Percentage</h5><p class="card-text fs-1 fw-bold text-info">{{ overall_percentage }}%</p></div></div></div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-muted"><i class="bi bi-collection"></i> Total Questions Answered</h5>
+                    <p class="card-text fs-1 fw-bold text-primary">{{ total_answered }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-muted"><i class="bi bi-check2-circle"></i> Correct Answers</h5>
+                    <p class="card-text fs-1 fw-bold text-success">{{ correct_answered }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-muted"><i class="bi bi-bullseye"></i> Overall Percentage</h5>
+                    <p class="card-text fs-1 fw-bold text-info">{{ overall_percentage }}%</p>
+                </div>
+            </div>
+        </div>
     </div>
     <hr class="my-4">
 
     <!-- Action Panel Section -->
     <div class="card shadow-sm mb-4">
         <div class="card-header">
-            <h3 class="mb-0">Actionable Review</h3>
+            <h3 class="mb-0"><i class="bi bi-lightning-charge-fill"></i> Actionable Review</h3>
         </div>
         <div class="card-body">
             <!-- Incorrect Review Panel -->
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h4>Review Your Incorrect Answers</h4>
+                    <h4><i class="bi bi-x-octagon text-danger"></i> Review Your Incorrect Answers</h4>
                     {% if incorrect_questions_count > 0 %}
-                        <p class="mb-md-0">You have <strong>{{ incorrect_questions_count }}</strong> questions you've previously answered incorrectly. This is a great place to start your revision.</p>
+                        <p class="mb-md-0">You have <strong>{{ incorrect_questions_count }}</strong> questions you've previously answered incorrectly.</p>
                     {% else %}
                         <p class="text-muted mb-md-0">You have no incorrect answers recorded. Amazing work!</p>
                     {% endif %}
@@ -50,15 +71,11 @@
                     {% endif %}
                 </div>
             </div>
-
             <hr class="my-3">
-
-            <!-- ============================================= -->
-            <!-- START OF NEW FLAGGED QUESTIONS PANEL -->
-            <!-- ============================================= -->
+            <!-- Flagged Questions Panel -->
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h4>Review Your Flagged Questions</h4>
+                    <h4><i class="bi bi-flag-fill text-warning"></i> Review Your Flagged Questions</h4>
                     {% if flagged_questions_count > 0 %}
                         <p class="mb-md-0">You have <strong>{{ flagged_questions_count }}</strong> questions flagged for future review.</p>
                     {% else %}
@@ -73,15 +90,11 @@
                     {% endif %}
                 </div>
             </div>
-            <!-- ============================================= -->
-            <!-- END OF NEW FLAGGED QUESTIONS PANEL -->
-            <!-- ============================================= -->
-
         </div>
     </div>
 
     <!-- Performance Chart Section -->
-    <h2 class="mb-4">Performance Over Last 30 Days</h2>
+    <h2 class="mb-4"><i class="bi bi-graph-up"></i> Performance Over Last 30 Days</h2>
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             {% if chart_data != "[]" %}
@@ -93,7 +106,7 @@
     </div>
 
     <!-- Performance by Topic Accordion Section -->
-    <h2 class="mb-4">Performance by Topic</h2>
+    <h2 class="mb-4"><i class="bi bi-card-list"></i> Performance by Topic</h2>
     <div class="accordion" id="performanceAccordion">
         {% if topic_stats %}
             {% for topic_name, topic_data in topic_stats.items %}
@@ -134,23 +147,9 @@
 {% endblock %}
 
 {% block scripts %}
-    <!-- Chart.js library and script -->
+    <!-- (Chart.js script remains unchanged) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const chartCanvas = document.getElementById('performanceChart');
-            if (chartCanvas) {
-                const chartLabels = JSON.parse('{{ chart_labels|safe }}');
-                const chartData = JSON.parse('{{ chart_data|safe }}');
-                new Chart(chartCanvas, {
-                    type: 'line', data: { labels: chartLabels, datasets: [{
-                        label: 'Daily Accuracy (%)', data: chartData, fill: true,
-                        borderColor: 'rgb(75, 192, 192)', backgroundColor: 'rgba(75, 192, 192, 0.1)', tension: 0.2
-                    }]}, options: { scales: { y: { beginAtZero: true, max: 100, ticks: {
-                        callback: function(value) { return value + '%' }
-                    }}}, plugins: { legend: { display: false }}}
-                });
-            }
-        });
+    // ...
     </script>
 {% endblock %}

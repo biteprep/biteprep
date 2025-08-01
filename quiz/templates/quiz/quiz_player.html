@@ -12,15 +12,25 @@
                 <div class="card-header bg-light">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="fw-bold">Question {{ question_index }} of {{ total_questions }}</span>
-                        
-                        <!-- THIS IS THE CORRECTED LINE -->
                         {% if seconds_remaining is not None %}
                             <span id="timer" class="badge bg-danger fs-6">Time Left: --:--</span>
                         {% endif %}
                     </div>
                 </div>
 
-                <div class="card-body">
+                <!-- ============================================= -->
+                <!-- START OF NEW PROGRESS BAR SECTION -->
+                <!-- ============================================= -->
+                {% if total_questions > 1 %}
+                <div class="progress" style="height: 5px; border-top-left-radius: 0; border-top-right-radius: 0;">
+                    <div class="progress-bar" role="progressbar" style="width: {% widthratio question_index total_questions 100 %}%" aria-valuenow="{% widthratio question_index total_questions 100 %}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                {% endif %}
+                <!-- ============================================= -->
+                <!-- END OF NEW PROGRESS BAR SECTION -->
+                <!-- ============================================= -->
+
+                <div class="card-body p-4">
                     <p class="card-text fs-5"><strong>{{ question.question_text|linebreaksbr }}</strong></p>
                     
                     {% if question.question_image %}
@@ -58,8 +68,7 @@
 
                 <div class="card-footer d-flex justify-content-between align-items-center">
                     {% if is_feedback_mode %}
-                        <!-- Feedback Footer -->
-                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#reportModal">Report Question</button>
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#reportModal"><i class="bi bi-exclamation-triangle"></i> Report</button>
                         <div>
                             {% if is_last_question %}
                                 <button type="submit" name="action" value="finish" class="btn btn-success">Finish & See Results</button>
@@ -68,12 +77,11 @@
                             {% endif %}
                         </div>
                     {% else %}
-                        <!-- Standard Question Footer -->
                         <button type="submit" name="action" value="prev" class="btn btn-outline-secondary {% if question_index <= 1 %}disabled{% endif %}">← Previous</button>
                         <div>
-                            <button type="button" class="btn btn-outline-danger btn-sm me-2" data-bs-toggle="modal" data-bs-target="#reportModal">Report</button>
-                            <button type="submit" name="action" value="toggle_flag" class="btn {% if question.id in quiz_context.flagged_questions %}btn-warning{% else %}btn-outline-warning{% endif %}">
-                                {% if question.id in quiz_context.flagged_questions %}Unflag{% else %}Flag{% endif %}
+                            <button type="button" class="btn btn-outline-danger btn-sm me-2" data-bs-toggle="modal" data-bs-target="#reportModal"><i class="bi bi-exclamation-triangle"></i> Report</button>
+                            <button type="submit" name="action" value="toggle_flag" class="btn {% if question.id in flagged_questions %}btn-warning{% else %}btn-outline-warning{% endif %}">
+                                <i class="bi bi-flag-fill"></i> {% if question.id in flagged_questions %}Unflag{% else %}Flag{% endif %}
                             </button>
                             {% if quiz_context.mode == 'quiz' %}
                                 <button type="submit" name="action" value="submit_answer" class="btn btn-success ms-2">Submit Answer</button>
@@ -91,7 +99,7 @@
         <!-- Navigator -->
         <div class="col-lg-3">
             <div class="card shadow-sm">
-                <div class="card-header fw-bold">Navigator</div>
+                <div class="card-header fw-bold"><i class="bi bi-compass-fill"></i> Navigator</div>
                 <div class="card-body" style="max-height: 60vh; overflow-y: auto;">
                     <div class="d-flex flex-wrap">
                         {% for item in navigator_items %}
@@ -99,7 +107,7 @@
                                class="btn {{ item.class }} me-1 mb-1 position-relative d-flex justify-content-center align-items-center" 
                                style="width: 45px; height: 45px;">
                                 {{ item.index }}
-                                {% if item.is_flagged %}<span class="position-absolute top-0 start-100 translate-middle p-1 bg-warning border border-light rounded-circle"></span>{% endif %}
+                                {% if item.is_flagged %}<span class="position-absolute top-0 start-100 translate-middle p-1 bg-warning border border-light rounded-circle"><span class="visually-hidden">Flagged</span></span>{% endif %}
                             </a>
                         {% endfor %}
                     </div>
@@ -146,29 +154,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // AJAX Report Submission
     const reportBtn = document.getElementById('submit-report-btn');
     const csrfToken = document.querySelector('form#quiz-player-form [name=csrfmiddlewaretoken]').value;
-
     if(reportBtn) {
         reportBtn.addEventListener('click', function() {
             const reason = document.getElementById('report-reason').value;
             const questionId = JSON.parse(document.getElementById('question-id-data').textContent);
             const feedbackEl = document.getElementById('report-feedback-message');
-            
             if (!reason.trim()) {
                 feedbackEl.textContent = 'Please provide a reason for the report.';
                 feedbackEl.className = 'text-danger';
                 return;
             }
-
             fetch("{% url 'report_question' %}", {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({
-                    question_id: questionId,
-                    reason: reason
-                })
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                body: JSON.stringify({question_id: questionId, reason: reason})
             })
             .then(response => response.json())
             .then(data => {
@@ -179,9 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     setTimeout(() => {
                         const modalEl = document.getElementById('reportModal');
                         const modal = bootstrap.Modal.getInstance(modalEl);
-                        if (modal) {
-                           modal.hide();
-                        }
+                        if (modal) { modal.hide(); }
                         feedbackEl.textContent = '';
                     }, 2000);
                 } else {
@@ -197,4 +194,179 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+{% endblock %}```
+
+### **Action 2: Complete code for `quiz/templates/quiz/dashboard.html`**
+
+Please **completely replace** the contents of your `quiz/templates/quiz/dashboard.html` file with this new version, which includes icons for a cleaner, more scannable layout.
+
+```html
+{% extends "base.html" %}
+
+{% block title %}Your Dashboard - BitePrep{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+        <div class="text-start">
+            <h1><i class="bi bi-speedometer2"></i> Your Dashboard</h1>
+            <p class="lead mb-0">Welcome back, {{ user.username }}! Here's a summary of your progress.</p>
+        </div>
+        <div>
+            <form action="{% url 'reset_performance' %}" method="post" onsubmit="return confirm('Are you sure you want to permanently reset all your performance data? This action cannot be undone.');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset Performance
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Overall Stats Section -->
+    <div class="row text-center g-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-muted"><i class="bi bi-collection"></i> Total Questions Answered</h5>
+                    <p class="card-text fs-1 fw-bold text-primary">{{ total_answered }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-muted"><i class="bi bi-check2-circle"></i> Correct Answers</h5>
+                    <p class="card-text fs-1 fw-bold text-success">{{ correct_answered }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-muted"><i class="bi bi-bullseye"></i> Overall Percentage</h5>
+                    <p class="card-text fs-1 fw-bold text-info">{{ overall_percentage }}%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <hr class="my-4">
+
+    <!-- Action Panel Section -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h3 class="mb-0"><i class="bi bi-lightning-charge-fill"></i> Actionable Review</h3>
+        </div>
+        <div class="card-body">
+            <!-- Incorrect Review Panel -->
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h4><i class="bi bi-x-octagon text-danger"></i> Review Your Incorrect Answers</h4>
+                    {% if incorrect_questions_count > 0 %}
+                        <p class="mb-md-0">You have <strong>{{ incorrect_questions_count }}</strong> questions you've previously answered incorrectly.</p>
+                    {% else %}
+                        <p class="text-muted mb-md-0">You have no incorrect answers recorded. Amazing work!</p>
+                    {% endif %}
+                </div>
+                <div class="col-md-4 text-md-end">
+                    {% if incorrect_questions_count > 0 %}
+                        <a href="{% url 'start_incorrect_quiz' %}" class="btn btn-primary btn-lg">Start Review Quiz</a>
+                    {% else %}
+                        <a href="#" class="btn btn-primary btn-lg disabled">Nothing to Review</a>
+                    {% endif %}
+                </div>
+            </div>
+            <hr class="my-3">
+            <!-- Flagged Questions Panel -->
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h4><i class="bi bi-flag-fill text-warning"></i> Review Your Flagged Questions</h4>
+                    {% if flagged_questions_count > 0 %}
+                        <p class="mb-md-0">You have <strong>{{ flagged_questions_count }}</strong> questions flagged for future review.</p>
+                    {% else %}
+                        <p class="text-muted mb-md-0">You can flag questions during a quiz to easily review them later.</p>
+                    {% endif %}
+                </div>
+                <div class="col-md-4 text-md-end">
+                    {% if flagged_questions_count > 0 %}
+                        <a href="{% url 'start_flagged_quiz' %}" class="btn btn-warning btn-lg">Review Flagged</a>
+                    {% else %}
+                        <a href="#" class="btn btn-warning btn-lg disabled">Nothing to Review</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Chart Section -->
+    <h2 class="mb-4"><i class="bi bi-graph-up"></i> Performance Over Last 30 Days</h2>
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            {% if chart_data != "[]" %}
+                <canvas id="performanceChart"></canvas>
+            {% else %}
+                <p class="text-center p-3">No recent activity to display. <a href="{% url 'quiz_setup' %}">Start a quiz</a> to track your performance!</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Performance by Topic Accordion Section -->
+    <h2 class="mb-4"><i class="bi bi-card-list"></i> Performance by Topic</h2>
+    <div class="accordion" id="performanceAccordion">
+        {% if topic_stats %}
+            {% for topic_name, topic_data in topic_stats.items %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading-{{ topic_data.id }}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ topic_data.id }}" aria-expanded="false" aria-controls="collapse-{{ topic_data.id }}">
+                            <div class="d-flex justify-content-between w-100 me-3">
+                                <span class="fw-bold">{{ topic_name }}</span>
+                                <span>
+                                    <span class="badge bg-secondary me-2">{{ topic_data.correct }}/{{ topic_data.total }}</span>
+                                    <span class="badge bg-primary">{{ topic_data.percentage }}%</span>
+                                </span>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="collapse-{{ topic_data.id }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ topic_data.id }}" data-bs-parent="#performanceAccordion">
+                        <div class="accordion-body p-0">
+                            <table class="table table-striped table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr><th scope="col">Subtopic</th><th scope="col" class="text-center">Answered</th><th scope="col" class="text-center">Correct</th><th scope="col" class="text-center">Percentage</th></tr>
+                                </thead>
+                                <tbody>
+                                    {% for subtopic in topic_data.subtopics %}
+                                        <tr><td>{{ subtopic.name }}</td><td class="text-center">{{ subtopic.total }}</td><td class="text-center">{{ subtopic.correct }}</td><td class="text-center fw-bold">{{ subtopic.percentage }}%</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                 <div class="card shadow-sm"><div class="card-body"><p class="text-center p-3">You haven't answered any questions yet. <a href="{% url 'quiz_setup' %}">Start a quiz</a> to see your stats!</p></div></div>
+            {% endfor %}
+        {% else %}
+             <div class="card shadow-sm"><div class="card-body"><p class="text-center p-3">You haven't answered any questions yet. <a href="{% url 'quiz_setup' %}">Start a quiz</a> to see your stats!</p></div></div>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <!-- Chart.js library and script -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chartCanvas = document.getElementById('performanceChart');
+            if (chartCanvas) {
+                const chartLabels = JSON.parse('{{ chart_labels|safe }}');
+                const chartData = JSON.parse('{{ chart_data|safe }}');
+                new Chart(chartCanvas, {
+                    type: 'line', data: { labels: chartLabels, datasets: [{
+                        label: 'Daily Accuracy (%)', data: chartData, fill: true,
+                        borderColor: 'rgb(75, 192, 192)', backgroundColor: 'rgba(75, 192, 192, 0.1)', tension: 0.2
+                    }]}, options: { scales: { y: { beginAtZero: true, max: 100, ticks: {
+                        callback: function(value) { return value + '%' }
+                    }}}, plugins: { legend: { display: false }}}
+                });
+            }
+        });
+    </script>
 {% endblock %}
