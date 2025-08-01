@@ -2,9 +2,32 @@
 
 {% block title %}The Ultimate Dental Revision Tool{% endblock %}
 
+<!-- ============================================= -->
+<!-- START OF NEW, PAGE-SPECIFIC STYLES -->
+<!-- ============================================= -->
+{% block head_styles %}
+<style>
+    .hero-gradient {
+        background: linear-gradient(180deg, #e3f2fd 0%, #ffffff 100%); /* A subtle light-blue to white gradient */
+        border-radius: 1.5rem; /* Softer, more modern corners */
+    }
+    .feature-icon-sm {
+        width: 3rem;
+        height: 3rem;
+        font-size: 1.5rem;
+    }
+</style>
+{% endblock %}
+<!-- ============================================= -->
+<!-- END OF NEW STYLES -->
+<!-- ============================================= -->
+
+
 {% block content %}
-<!-- Section 1: Hero -->
-<div class="px-4 py-5 my-5 text-center">
+<!-- ============================================= -->
+<!-- SECTION 1: HERO (NOW WITH GRADIENT BACKGROUND) -->
+<!-- ============================================= -->
+<div class="hero-gradient px-4 py-5 my-5 text-center">
     <h1 class="display-4 fw-bold">🦷 BitePrep</h1>
     <div class="col-lg-8 mx-auto">
         <p class="lead mb-4">The ultimate question bank designed for UK dental students. Master preclinical and clinical topics with our advanced, customisable quiz engine.</p>
@@ -20,65 +43,93 @@
     </div>
 </div>
 
-<!-- Section 2: Features -->
-<div class="container px-4 py-5" id="featured-3">
-    <h2 class="pb-2 border-bottom text-center">Features Designed for Success</h2>
+<!-- ============================================= -->
+<!-- SECTION 2: NEW "HOW IT WORKS" SECTION -->
+<!-- ============================================= -->
+<div class="container px-4 py-5">
+    <h2 class="pb-2 border-bottom text-center">Get Started in 3 Simple Steps</h2>
     <div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
-        <div class="feature col text-center">
-            <div class="feature-icon d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
-                <i class="bi bi-filter-circle"></i>
+        <div class="col d-flex align-items-start">
+            <div class="feature-icon-sm d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-2 me-3 p-3 rounded-3">
+                <i class="bi bi-pencil-square"></i>
             </div>
-            <h3 class="fs-2">Advanced Filtering</h3>
-            <p>Focus your revision by generating quizzes from questions you've previously answered incorrectly, correctly, or haven't seen yet.</p>
+            <div>
+                <h3 class="fs-4">1. Sign Up & Get Started</h3>
+                <p>Create your free account in seconds to access a sample of our high-yield question bank.</p>
+            </div>
         </div>
-        <div class="feature col text-center">
-            <div class="feature-icon d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+        <div class="col d-flex align-items-start">
+            <div class="feature-icon-sm d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-2 me-3 p-3 rounded-3">
                 <i class="bi bi-sliders"></i>
             </div>
-            <h3 class="fs-2">Customisable Sessions</h3>
-            <p>Choose between timed 'Test Mode' for exam simulation or 'Quiz Mode' for immediate feedback. Enable negative marking to truly test your knowledge.</p>
+            <div>
+                <h3 class="fs-4">2. Build Your Perfect Quiz</h3>
+                <p>Use advanced filters to select topics, set timers, and tailor a revision session to your exact needs.</p>
+            </div>
         </div>
-        <div class="feature col text-center">
-            <div class="feature-icon d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-2 mb-3 p-3 rounded-3">
+        <div class="col d-flex align-items-start">
+            <div class="feature-icon-sm d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-2 me-3 p-3 rounded-3">
                 <i class="bi bi-graph-up-arrow"></i>
             </div>
-            <h3 class="fs-2">Detailed Analytics</h3>
-            <p>Track your progress with a personalised dashboard, analysing your performance and breaking down your strengths and weaknesses by topic.</p>
-        </div>
-    </div>
-</div>
-
-<!-- Section 3: Testimonials -->
-<div class="bg-light">
-    <div class="container px-4 py-5">
-        <h2 class="text-center mb-5">Trusted by Students Like You</h2>
-        <div class="row gx-5">
-            <div class="col-lg-6">
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <blockquote class="blockquote mb-0">
-                        <p>"BitePrep's detailed analytics helped me identify my weak spots in pharmacology right before my finals. An absolute game-changer."</p>
-                        <footer class="blockquote-footer">Sarah J, <cite title="Source Title">King's College London</cite></footer>
-                        </blockquote>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-6">
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <blockquote class="blockquote mb-0">
-                        <p>"The ability to create custom quizzes based on topics I got wrong was invaluable. It's the most efficient way to revise."</p>
-                        <footer class="blockquote-footer">Minha C, <cite title="Source Title">University of Plymouth</cite></footer>
-                        </blockquote>
-                    </div>
-                </div>
+            <div>
+                <h3 class="fs-4">3. Analyze & Improve</h3>
+                <p>Review detailed analytics on your personal dashboard to identify your weak spots and track your progress.</p>
             </div>
         </div>
     </div>
 </div>
 
 
-<!-- Section 4: Final Call to Action -->
+<!-- Section 3: Features (Unchanged but now follows "How it Works") -->
+<div class="bg-light py-5">
+    <div class="container px-4" id="featured-3">
+        <h2 class="pb-2 border-bottom text-center">Powerful Features for Effective Revision</h2>
+        <div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
+            <div class="feature col text-center">
+                <h3 class="fs-2">Advanced Filtering</h3>
+                <p>Focus your revision by generating quizzes from questions you've previously answered incorrectly, correctly, or haven't seen yet.</p>
+            </div>
+            <div class="feature col text-center">
+                <h3 class="fs-2">Customisable Sessions</h3>
+                <p>Choose between timed 'Test Mode' for exam simulation or 'Quiz Mode' for immediate feedback to truly test your knowledge.</p>
+            </div>
+            <div class="feature col text-center">
+                <h3 class="fs-2">Detailed Analytics</h3>
+                <p>Track your progress with a personalised dashboard, analysing your performance and breaking down your strengths and weaknesses by topic.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Section 4: Testimonials (Unchanged) -->
+<div class="container px-4 py-5">
+    <h2 class="text-center mb-5">Trusted by Students Like You</h2>
+    <div class="row gx-5">
+        <div class="col-lg-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <blockquote class="blockquote mb-0">
+                    <p>"BitePrep's detailed analytics helped me identify my weak spots in pharmacology right before my finals. An absolute game-changer."</p>
+                    <footer class="blockquote-footer">Sarah J, <cite title="Source Title">King's College London</cite></footer>
+                    </blockquote>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <blockquote class="blockquote mb-0">
+                    <p>"The ability to create custom quizzes based on topics I got wrong was invaluable. It's the most efficient way to revise."</p>
+                    <footer class="blockquote-footer">Minha C, <cite title="Source Title">University of Plymouth</cite></footer>
+                    </blockquote>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Section 5: Final Call to Action (Unchanged) -->
 <div class="container my-5">
     <div class="p-5 text-center bg-body-tertiary rounded-3">
         <h2 class="text-body-emphasis">Ready to Ace Your Exams?</h2>
