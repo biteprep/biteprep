@@ -146,10 +146,30 @@
     </div>
 {% endblock %}
 
+<!-- ============================================= -->
+<!-- START OF THE CORRECTED/RESTORED SCRIPT BLOCK -->
+<!-- ============================================= -->
 {% block scripts %}
-    <!-- (Chart.js script remains unchanged) -->
+    <!-- Chart.js library and script -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-    // ...
+        document.addEventListener('DOMContentLoaded', function() {
+            const chartCanvas = document.getElementById('performanceChart');
+            if (chartCanvas) {
+                const chartLabels = JSON.parse('{{ chart_labels|safe }}');
+                const chartData = JSON.parse('{{ chart_data|safe }}');
+                new Chart(chartCanvas, {
+                    type: 'line', data: { labels: chartLabels, datasets: [{
+                        label: 'Daily Accuracy (%)', data: chartData, fill: true,
+                        borderColor: 'rgb(75, 192, 192)', backgroundColor: 'rgba(75, 192, 192, 0.1)', tension: 0.2
+                    }]}, options: { scales: { y: { beginAtZero: true, max: 100, ticks: {
+                        callback: function(value) { return value + '%' }
+                    }}}, plugins: { legend: { display: false }}}
+                });
+            }
+        });
     </script>
 {% endblock %}
+<!-- ============================================= -->
+<!-- END OF THE SCRIPT BLOCK -->
+<!-- ============================================= -->
