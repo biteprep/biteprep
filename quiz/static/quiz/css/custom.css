@@ -1,0 +1,53 @@
+/* In quiz/static/quiz/css/custom.css */
+
+/* --- 1. Modern Typography --- */
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Make headings a bit bolder for better hierarchy */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600; 
+}
+
+
+/* --- 2. Softer Edges and Shadows --- */
+
+/* Give cards a softer, more modern corner radius */
+.card {
+    border-radius: 0.5rem; /* Default is 0.375rem */
+    border: none; /* Remove the default border to rely on the shadow */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* A subtle, modern shadow */
+}
+
+/* Give buttons a slightly softer corner radius */
+.btn {
+    border-radius: 0.4rem; /* Default is 0.375rem */
+}
+
+/* For "pill" shaped buttons, make them fully rounded */
+.btn-pill {
+    border-radius: 50rem;
+}
+
+/* Make the accordion items have softer corners as well */
+.accordion-item {
+    border-radius: 0.5rem !important; /* Use !important to override Bootstrap's specificity */
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.accordion-button {
+    border-radius: 0.5rem !important;
+}
+
+/* Ensure the first and last items in an accordion look right when open */
+.accordion-item:first-of-type, .accordion-item:first-of-type .accordion-button {
+    border-top-left-radius: 0.5rem !important;
+    border-top-right-radius: 0.5rem !important;
+}
+
+.accordion-item:last-of-type, .accordion-item:last-of-type .accordion-button.collapsed {
+    border-bottom-left-radius: 0.5rem !important;
+    border-bottom-right-radius: 0.5rem !important;
+}
