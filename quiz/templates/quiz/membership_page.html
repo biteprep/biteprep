@@ -3,49 +3,71 @@
 {% block title %}Membership - BitePrep{% endblock %}
 
 {% block content %}
-<h1>BitePrep Membership</h1>
-<hr>
-
-<div style="text-align: center; padding: 2em;">
-    <h3>Access to the Question Bank is a Premium Feature.</h3>
+<div class="container" style="max-width: 800px;">
+    <div class="text-center mb-5">
+        <h1><i class="bi bi-gem"></i> BitePrep Membership</h1>
+        <p class="lead">Unlock your full potential. Choose a plan to get unlimited access to our entire question bank and all features.</p>
+    </div>
 
     {% if user.is_authenticated and user.profile.membership != 'Free' %}
-        <p>Your current plan is: <strong>{{ user.profile.membership }}</strong>.</p>
-        <p>Your access is valid until: <strong>{{ user.profile.membership_expiry_date|date:"F j, Y" }}</strong>.</p>
+        <div class="alert alert-success text-center">
+            <h4 class="alert-heading">You have an active subscription!</h4>
+            <p>Your current plan is: <strong>{{ user.profile.membership }}</strong>.</p>
+            <p class="mb-0">Your access is valid until: <strong>{{ user.profile.membership_expiry_date|date:"F j, Y" }}</strong>.</p>
+            <hr>
+            <a href="{% url 'account' %}" class="btn btn-success">Manage Your Subscription</a>
+        </div>
     {% else %}
-        <p>Your current plan is: <strong>Free Tier</strong>.</p>
-        <p>Please upgrade to a Monthly or Annual plan to get started!</p>
+        <div class="row">
+            <!-- Monthly Plan -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header text-center">
+                        <h4 class="my-0 fw-normal">Monthly</h4>
+                    </div>
+                    <div class="card-body text-center d-flex flex-column">
+                        <h1 class="card-title pricing-card-title">£12<small class="text-muted fw-light">/mo</small></h1>
+                        <ul class="list-unstyled mt-3 mb-4 flex-grow-1">
+                            <li>Unlimited question access</li>
+                            <li>Advanced analytics</li>
+                            <li>All quiz modes</li>
+                            <li>Cancel anytime</li>
+                        </ul>
+                        <form action="{% url 'create_checkout_session' %}" method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="priceId" value="price_1RkrOp2Y8UHHjO4s3j7nZ29G">
+                            <button type="submit" class="w-100 btn btn-lg btn-outline-primary">Choose Monthly</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Annual Plan -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100 border-primary position-relative">
+                    <div class="position-absolute top-0 end-0 p-2">
+                        <span class="badge bg-primary">Best Value</span>
+                    </div>
+                    <div class="card-header text-center bg-primary text-white">
+                        <h4 class="my-0 fw-normal">Annual</h4>
+                    </div>
+                    <div class="card-body text-center d-flex flex-column">
+                        <h1 class="card-title pricing-card-title">£129.60<small class="text-muted fw-light">/yr</small></h1>
+                        <ul class="list-unstyled mt-3 mb-4 flex-grow-1">
+                            <li><strong>Save 10%</strong> with annual billing</li>
+                            <li>Unlimited question access</li>
+                            <li>Advanced analytics</li>
+                            <li>All quiz modes</li>
+                        </ul>
+                        <form action="{% url 'create_checkout_session' %}" method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="priceId" value="price_1RkrR12Y8UHHjO4srz9JbCin">
+                            <button type="submit" class="w-100 btn btn-lg btn-primary">Choose Annual</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
     {% endif %}
-
-    <div style="display: flex; justify-content: space-around; margin-top: 2em;">
-    
-        <!-- Monthly Plan Form -->
-        <div style="border: 1px solid #ddd; padding: 1.5em; border-radius: 8px; width: 45%;">
-            <h4>Monthly Membership</h4>
-            <p style="font-size: 1.5em; font-weight: bold;">£12 / month</p>
-            <form action="{% url 'create_checkout_session' %}" method="POST">
-                {% csrf_token %}
-                <!-- Monthly Price ID is now included -->
-                <input type="hidden" name="priceId" value="price_1RkrOp2Y8UHHjO4s3j7nZ29G">
-                <button type="submit" style="background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">Subscribe</button>
-            </form>
-        </div>
-    
-        <!-- Annual Plan Form -->
-        <div style="border: 1px solid #007bff; padding: 1.5em; border-radius: 8px; width: 45%;">
-            <h4>Annual Membership</h4>
-            <p style="font-size: 1.5em; font-weight: bold;">£129.60 / year</p>
-            <p><strong>(10% off!)</strong></p>
-            <form action="{% url 'create_checkout_session' %}" method="POST">
-                {% csrf_token %}
-                <!-- Annual Price ID is now included -->
-                <input type="hidden" name="priceId" value="price_1RkrR12Y8UHHjO4srz9JbCin">
-                <button type="submit" style="background-color: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">Subscribe</button>
-            </form>
-        </div>
-    
-    </div>
 </div>
-{% endblock %}```
-
-**Improvement Added:** I've added a small block at the top of the content that checks if the user *already* has a subscription. If they do, it tells them their current plan and expiry date instead of just asking them to upgrade. This makes the page smarter.
+{% endblock %}

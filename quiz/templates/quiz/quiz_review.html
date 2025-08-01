@@ -1,25 +1,37 @@
 {% extends "base.html" %}
 
-{% block title %}Test Review - BitePrep{% endblock %}
+{% block title %}Quiz Review - BitePrep{% endblock %}
 
 {% block content %}
-    <div class="text-center border-bottom pb-3 mb-4">
-        <h1>Test Complete!</h1>
-        <p class="lead">You scored:</p>
-        <p class="display-4 fw-bold text-primary">
-            {{ final_score }} / {{ total_questions }} 
-            <span class="fs-4 text-muted">({{ percentage_score }}%)</span>
-        </p>
+<div class="container" style="max-width: 900px;">
+    <!-- Results Summary Card -->
+    <div class="card shadow-sm text-center mb-5">
+        <div class="card-body p-4">
+            <h1 class="card-title">Quiz Complete!</h1>
+            <p class="lead">Here's how you did:</p>
+            <p class="display-4 fw-bold text-primary">
+                {{ final_score }} / {{ total_questions }} 
+                <span class="fs-4 text-muted">({{ percentage_score }}%)</span>
+            </p>
+            <a href="{% url 'dashboard' %}" class="btn btn-secondary mt-2">Back to Dashboard</a>
+            <a href="{% url 'quiz_setup' %}" class="btn btn-primary mt-2">Take Another Quiz</a>
+        </div>
     </div>
 
-    <h2 class="mb-4">Detailed Review</h2>
+    <!-- Detailed Review Section -->
+    <h2 class="mb-4">Detailed Question Review</h2>
     {% for item in review_data %}
         <div class="card shadow-sm mb-4">
-            <div class="card-header">
-                <!-- CHANGED: Font size changed via custom class `fs-6` -->
-                <strong class="fs-6">Question {{ forloop.counter }}:</strong> <span class="fs-6">{{ item.question.question_text|linebreaksbr }}</span>
+            <div class="card-header d-flex justify-content-between align-items-center
+                {% if item.user_answer.is_correct %} bg-success-subtle text-success-emphasis {% else %} bg-danger-subtle text-danger-emphasis {% endif %}">
+                <strong class="fs-6">Question {{ forloop.counter }}</strong>
+                <span class="badge {% if item.user_answer.is_correct %} bg-success {% else %} bg-danger {% endif %}">
+                    {% if item.user_answer.is_correct %} Correct {% else %} Incorrect {% endif %}
+                </span>
             </div>
             <div class="card-body">
+                <p class="card-text fs-5"><strong>{{ item.question.question_text|linebreaksbr }}</strong></p>
+
                 {% if item.question.question_image %}
                     <img src="{{ item.question.question_image.url }}" alt="Question Image" class="img-fluid rounded mb-3" style="max-height: 400px;">
                 {% endif %}
@@ -37,7 +49,6 @@
                     {% endfor %}
                 </ul>
 
-                <!-- CHANGED: Added text-start class to align text to the left -->
                 <div class="alert alert-info mt-3 text-start">
                     <strong>Explanation:</strong><br>{{ item.question.explanation|linebreaksbr }}
                 </div>
@@ -46,6 +57,7 @@
     {% endfor %}
 
     <div class="d-grid gap-2 mt-4">
-        <a href="{% url 'home' %}" class="btn btn-primary btn-lg">Take Another Quiz</a>
+        <a href="{% url 'dashboard' %}" class="btn btn-primary btn-lg">Return to Dashboard</a>
     </div>
+</div>
 {% endblock %}

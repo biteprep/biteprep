@@ -4,22 +4,21 @@
 {% block title %}Sign Up - BitePrep{% endblock %}
 
 {% block content %}
-    <div style="max-width: 500px; margin: auto;">
-        <h2 class="text-center">Create Your BitePrep Account</h2>
-        
-        <!-- The <form> tag must contain the csrf_token -->
-        <form method="post">
-            
-            <!-- THIS LINE IS THE CRITICAL FIX -->
-            {% csrf_token %}
-            
-            {{ form|crispy }}
-            <div class="d-grid mt-4">
-                <button type="submit" class="btn btn-success btn-lg">Sign Up</button>
+    <div class="container" style="max-width: 500px;">
+        <div class="card shadow-sm">
+            <div class="card-body p-4 p-md-5">
+                <h2 class="text-center card-title mb-4">Create Your BitePrep Account</h2>
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-success btn-lg">Create Account</button>
+                    </div>
+                </form>
+                <div class="text-center mt-4">
+                    <p class="mb-0">Already have an account? <a href="{% url 'login' %}">Log In</a></p>
+                </div>
             </div>
-        </form>
-        <div class="text-center mt-3">
-            <p>Already have an account? <a href="{% url 'login' %}">Log In</a></p>
         </div>
     </div>
 {% endblock %}

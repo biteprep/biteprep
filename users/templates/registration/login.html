@@ -1,19 +1,25 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %} <!-- Add this line -->
+{% load crispy_forms_tags %}
 
 {% block title %}Login - BitePrep{% endblock %}
 
 {% block content %}
-    <div style="max-width: 500px; margin: auto;">
-        <h2 style="text-align: center;">Log In to BitePrep</h2>
-        <form method="post">
-            {% csrf_token %}
-            <!-- This is the only change needed for the form body -->
-            {{ form|crispy }}
-            <button type="submit" class="btn btn-primary w-100">Login</button>
-        </form>
-        <div style="text-align: center; margin-top: 20px;">
-            <p>Don't have an account? <a href="{% url 'signup' %}">Sign Up</a></p>
+    <div class="container" style="max-width: 500px;">
+        <div class="card shadow-sm">
+            <div class="card-body p-4 p-md-5">
+                <h2 class="card-title text-center mb-4">Log In to Your Account</h2>
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">Login</button>
+                    </div>
+                </form>
+                <div class="text-center mt-4">
+                    <p class="mb-1"><a href="{% url 'password_reset' %}">Forgot Password?</a></p>
+                    <p class="mb-0">Don't have an account? <a href="{% url 'signup' %}">Sign Up</a></p>
+                </div>
+            </div>
         </div>
     </div>
 {% endblock %}
