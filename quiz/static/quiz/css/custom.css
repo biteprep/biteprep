@@ -1,53 +1,295 @@
-/* In quiz/static/quiz/css/custom.css */
+/* quiz/static/quiz/css/custom.css */
 
-/* --- 1. Modern Typography --- */
-body {
-    font-family: 'Inter', sans-serif;
+/* --- 0. Root Variables & Theme Definition --- */
+:root {
+    /* Light Mode (Default) */
+    /* A modern, slightly softer blue palette */
+    --color-primary: #3B71CA; 
+    --color-primary-hover: #305da8;
+    --color-danger: #dc3545;
+    
+    --color-text: #212529;
+    --color-text-secondary: #6c757d;
+    
+    /* A light, airy background instead of harsh grey */
+    --color-background: #f4f7fc; 
+    --color-surface: #ffffff; /* Pure white for cards, navbar */
+    --color-border: #e9ecef;
+    
+    /* Modern, subtle shadows */
+    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 8px 25px rgba(0, 0, 0, 0.08);
+    /* Smooth transition definition */
+    --transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+    
+    /* Define radii for modernization */
+    --radius-sm: 8px;
+    --radius-lg: 12px;
 }
 
-/* Make headings a bit bolder for better hierarchy */
-h1, h2, h3, h4, h5, h6 {
+[data-theme="dark"] {
+    /* Dark Mode */
+    --color-primary: #79a6f6; /* Lighter blue for better contrast */
+    --color-primary-hover: #9dbafe;
+    --color-danger: #ff6b6b;
+
+    --color-text: #f8f9fa;
+    --color-text-secondary: #adb5bd;
+    
+    /* A sophisticated dark blue/grey instead of pure black */
+    --color-background: #1a1d23; 
+    --color-surface: #262a33; /* Slightly lighter surface for cards */
+    --color-border: #343a40;
+    
+    /* Shadows are less necessary in dark mode but adjusted for depth */
+    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 8px 25px rgba(0, 0, 0, 0.5);
+}
+
+/* --- 1. Base Styles & Typography --- */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-text);
+    /* Smooth transition when switching themes */
+    transition: background-color 0.3s, color 0.3s;
+    line-height: 1.6; /* Improved readability */
+}
+
+/* Improved typographic hierarchy */
+h1, h2, h3 {
+    font-weight: 700; 
+}
+
+h4, h5, h6 {
     font-weight: 600; 
 }
 
+h1, h2, h3, h4, h5, h6 {
+    color: var(--color-text);
+    margin-bottom: 1rem;
+}
 
-/* --- 2. Softer Edges and Shadows --- */
+a {
+    color: var(--color-primary);
+    transition: var(--transition);
+}
 
-/* Give cards a softer, more modern corner radius */
+a:hover {
+    color: var(--color-primary-hover);
+}
+
+/* --- 2. Layout & Spacing (Breathing Room) --- */
+
+.content-container {
+    /* Increased spacing from the original 2rem */
+    margin-top: 3rem;
+    margin-bottom: 3rem;
+}
+
+/* --- 3. Component Modernization --- */
+
+/* Navbar */
+.navbar {
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.navbar-brand {
+    font-weight: 700 !important;
+    /* Ensure the brand color stands out */
+    color: var(--color-primary) !important; 
+    font-size: 1.5rem;
+}
+
+/* Making the toggler work visually in both modes using filters */
+.navbar-toggler-icon {
+    /* Default Bootstrap 5 icon is dark */
+    filter: none;
+}
+
+[data-theme="dark"] .navbar-toggler-icon {
+    /* Invert the icon to white for dark mode */
+    filter: invert(1);
+}
+
+
+/* Cards - Softer, spacious, modern */
 .card {
-    border-radius: 0.5rem; /* Default is 0.375rem */
-    border: none; /* Remove the default border to rely on the shadow */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* A subtle, modern shadow */
-}
-
-/* Give buttons a slightly softer corner radius */
-.btn {
-    border-radius: 0.4rem; /* Default is 0.375rem */
-}
-
-/* For "pill" shaped buttons, make them fully rounded */
-.btn-pill {
-    border-radius: 50rem;
-}
-
-/* Make the accordion items have softer corners as well */
-.accordion-item {
-    border-radius: 0.5rem !important; /* Use !important to override Bootstrap's specificity */
+    border-radius: var(--radius-lg); 
     border: none;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-md);
+    background-color: var(--color-surface);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background-color 0.3s;
+    margin-bottom: 2rem; /* Increased spacing between cards */
+}
+
+.card-header {
+    background-color: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    font-weight: 600;
+    padding: 1.25rem 1.5rem;
+}
+
+.card-body {
+    padding: 1.5rem; /* More padding inside cards */
+}
+
+/* Buttons - Cleaner, interactive */
+.btn {
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 1.25rem;
+    font-weight: 500;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid transparent; /* Ensure consistency */
+}
+
+.btn:hover {
+    /* Subtle lift effect on hover */
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-primary {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+/* Specific overrides for Bootstrap primary button states */
+.btn-primary:hover, .btn-primary:focus, .btn-primary:active {
+    background-color: var(--color-primary-hover) !important;
+    border-color: var(--color-primary-hover) !important;
+}
+
+.btn-outline-primary {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff; /* Ensure text is white on hover */
+}
+
+/* Ensure text color is readable when hovering outline buttons in dark mode */
+[data-theme="dark"] .btn-outline-primary:hover {
+    /* Assuming the primary color in dark mode is light, the text should be dark */
+    color: #1a1d23; 
+}
+
+/* Alerts */
+.alert {
+    border-radius: var(--radius-sm);
+    border: none;
+    box-shadow: var(--shadow-sm);
+    padding: 1.25rem;
+}
+
+/* Forms (Modernizing inputs for consistency) */
+.form-control, .form-select {
+    border-radius: var(--radius-sm);
+    /* Inputs look better slightly differentiated from the main background */
+    background-color: var(--color-background);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    padding: 0.75rem 1rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--color-primary);
+    /* A softer focus ring using the primary color's RGB values (Note: this specific RGB matches the light mode primary color) */
+    box-shadow: 0 0 0 0.25rem rgba(59, 113, 202, 0.25); 
+    background-color: var(--color-background);
+    color: var(--color-text);
+}
+
+/* Override Bootstrap close button colors in dark mode */
+[data-theme="dark"] .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+
+/* Accordion */
+.accordion-item {
+    border-radius: var(--radius-lg) !important;
+    border: none;
+    box-shadow: var(--shadow-md);
+    background-color: var(--color-surface);
+    margin-bottom: 1.5rem; /* Space out accordion items */
 }
 
 .accordion-button {
-    border-radius: 0.5rem !important;
+    border-radius: var(--radius-lg) !important;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    font-weight: 600;
+    padding: 1.25rem 1.5rem;
 }
 
-/* Ensure the first and last items in an accordion look right when open */
+.accordion-button:not(.collapsed) {
+    color: var(--color-primary);
+    background-color: var(--color-surface); /* Prevent default blue background */
+    box-shadow: none;
+}
+
+.accordion-button:focus {
+    box-shadow: none;
+    border-color: var(--color-primary);
+}
+
+/* Adjusting accordion icon color for dark mode */
+[data-theme="dark"] .accordion-button::after {
+    filter: invert(1);
+}
+
+/* Ensuring correct rounding */
 .accordion-item:first-of-type, .accordion-item:first-of-type .accordion-button {
-    border-top-left-radius: 0.5rem !important;
-    border-top-right-radius: 0.5rem !important;
+    border-top-left-radius: var(--radius-lg) !important;
+    border-top-right-radius: var(--radius-lg) !important;
 }
 
 .accordion-item:last-of-type, .accordion-item:last-of-type .accordion-button.collapsed {
-    border-bottom-left-radius: 0.5rem !important;
-    border-bottom-right-radius: 0.5rem !important;
+    border-bottom-left-radius: var(--radius-lg) !important;
+    border-bottom-right-radius: var(--radius-lg) !important;
+}
+
+/* --- 4. Theme Toggle Button Styles --- */
+#theme-toggle {
+    background: transparent;
+    border: none;
+    color: var(--color-text-secondary);
+    font-size: 1.4rem; /* Slightly larger icon */
+    cursor: pointer;
+    transition: var(--transition);
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#theme-toggle:hover {
+    color: var(--color-primary);
+    transform: scale(1.1) rotate(10deg); /* Add a slight rotation for interactivity */
+}
+
+/* CSS-based Icon Switching */
+
+/* Default (Light Mode): Show the Moon icon (to switch to dark) */
+.icon-light-mode {
+    display: none;
+}
+.icon-dark-mode {
+    display: block;
+}
+
+/* Dark Mode: Show the Sun icon (to switch to light) */
+[data-theme="dark"] .icon-light-mode {
+    display: block;
+}
+[data-theme="dark"] .icon-dark-mode {
+    display: none;
 }
