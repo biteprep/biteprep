@@ -19,11 +19,14 @@
     /* Slightly lighter surface for cards/nav/modals in dark mode */
     --bp-surface-dark: #262a33; 
 
-    /* Modern, subtle shadows */
+    /* Modern, subtle shadows - Added Large shadow for interactivity */
     --shadow-sm-light: 0 2px 6px rgba(0, 0, 0, 0.05);
     --shadow-md-light: 0 8px 25px rgba(0, 0, 0, 0.08);
+    --shadow-lg-light: 0 15px 40px rgba(0, 0, 0, 0.1); /* New for hover */
+    
     --shadow-sm-dark: 0 2px 6px rgba(0, 0, 0, 0.3);
     --shadow-md-dark: 0 8px 25px rgba(0, 0, 0, 0.5);
+    --shadow-lg-dark: 0 15px 40px rgba(0, 0, 0, 0.6); /* New for hover */
 
     /* Smooth transition definition */
     --transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
@@ -48,6 +51,7 @@
     /* Assigning aesthetic variables */
     --shadow-sm: var(--shadow-sm-light);
     --shadow-md: var(--shadow-md-light);
+    --shadow-lg: var(--shadow-lg-light);
     --color-primary-hover: var(--bp-primary-hover-light);
 }
 
@@ -62,7 +66,7 @@
     --bs-body-color: #f8f9fa;
     --bs-emphasis-color: #ffffff;
 
-    /* CRITICAL: Override surface/component backgrounds. This ensures cards, navs, dropdowns, lists (used in quizzes) etc., are correct */
+    /* CRITICAL: Override surface/component backgrounds. */
     --bs-tertiary-bg: var(--bp-surface-dark);
     --bs-card-bg: var(--bp-surface-dark);
     --bs-accordion-bg: var(--bp-surface-dark);
@@ -75,6 +79,7 @@
     /* Assigning aesthetic variables */
     --shadow-sm: var(--shadow-sm-dark);
     --shadow-md: var(--shadow-md-dark);
+    --shadow-lg: var(--shadow-lg-dark);
     --color-primary-hover: var(--bp-primary-hover-dark);
 }
 
@@ -111,7 +116,7 @@ a {
     margin-bottom: 3rem;
 }
 
-/* --- 3. Component Modernization --- */
+/* --- 3. Component Modernization & Interactivity --- */
 
 /* Navbar */
 .navbar {
@@ -129,15 +134,25 @@ a {
     font-size: 1.5rem;
 }
 
-/* Cards - Softer, spacious, modern */
+/* Cards - Softer, spacious, modern, and INTERACTIVE */
 .card {
     border-radius: var(--radius-lg); 
-    border: none; /* Relying on shadow for definition */
+    border: none; 
     box-shadow: var(--shadow-md);
-    /* Background/Text color handled by Bootstrap variables (--bs-card-bg) */
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background-color 0.3s;
+    /* Smooth transition for hover effects */
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, background-color 0.3s;
     margin-bottom: 2rem;
 }
+
+/* ENHANCED INTERACTIVITY: Add a subtle lift and scale effect on hover */
+/* Assuming homepage elements use the card structure or a similar pattern. */
+.card:hover {
+    /* Slightly lift and scale the card for a modern interactive feel */
+    transform: translateY(-4px) scale(1.02); 
+    /* Enhance the shadow */
+    box-shadow: var(--shadow-lg);
+}
+
 
 .card-header {
     /* Ensure the header background matches the card */
@@ -177,7 +192,7 @@ a {
     border-color: var(--color-primary-hover) !important;
 }
 
-/* Ensure button text color is readable in dark mode (as the primary color is light) */
+/* Ensure button text color is readable in dark mode */
 [data-bs-theme="dark"] .btn-primary,
 [data-bs-theme="dark"] .btn-primary:hover,
 [data-bs-theme="dark"] .btn-primary:active,
@@ -302,6 +317,8 @@ a {
 [data-bs-theme="dark"] .bg-light {
     /* Force elements explicitly set to white/light to use the dark surface color */
     background-color: var(--bp-surface-dark) !important;
+    /* CRITICAL FIX: Force the text color INSIDE these elements to be light, ensuring readability for the homepage box. */
+    color: var(--bs-body-color) !important; 
 }
 
 [data-bs-theme="dark"] .text-dark,
