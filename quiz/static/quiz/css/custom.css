@@ -2,9 +2,9 @@
 
 /* --- 0. Root Variables & Theme Integration --- */
 
-/* Define the modern aesthetic variables first (BitePrep Palette) */
+/* Define the modern aesthetic variables (BitePrep Palette) */
 :root {
-    /* A modern, slightly softer blue palette */
+    /* Modern, softer blue palette */
     --bp-primary-light: #3B71CA; 
     --bp-primary-hover-light: #305da8;
     --bp-primary-dark: #79a6f6; 
@@ -12,11 +12,14 @@
 
     /* Light, airy background */
     --bp-background-light: #f4f7fc; 
+    --bp-surface-light: #ffffff;
+    
     /* Sophisticated dark blue/grey */
     --bp-background-dark: #1a1d23;
-    --bp-surface-dark: #262a33; /* For cards/nav in dark mode */
+    /* Slightly lighter surface for cards/nav/modals in dark mode */
+    --bp-surface-dark: #262a33; 
 
-    /* Modern, subtle shadows (Adjusted for visibility on different backgrounds) */
+    /* Modern, subtle shadows */
     --shadow-sm-light: 0 2px 6px rgba(0, 0, 0, 0.05);
     --shadow-md-light: 0 8px 25px rgba(0, 0, 0, 0.08);
     --shadow-sm-dark: 0 2px 6px rgba(0, 0, 0, 0.3);
@@ -34,10 +37,15 @@
 [data-bs-theme="light"] {
     /* Inject the BitePrep palette into Bootstrap variables */
     --bs-primary: var(--bp-primary-light);
-    --bs-primary-rgb: 59, 113, 202; /* RGB version of #3B71CA for Bootstrap focus rings */
+    --bs-primary-rgb: 59, 113, 202; 
     --bs-body-bg: var(--bp-background-light);
     
-    /* Assigning aesthetic variables for use in components */
+    /* Ensure surfaces (cards, nav) are pure white */
+    --bs-tertiary-bg: var(--bp-surface-light);
+    --bs-card-bg: var(--bp-surface-light);
+    --bs-list-group-bg: var(--bp-surface-light);
+    
+    /* Assigning aesthetic variables */
     --shadow-sm: var(--shadow-sm-light);
     --shadow-md: var(--shadow-md-light);
     --color-primary-hover: var(--bp-primary-hover-light);
@@ -47,15 +55,24 @@
 [data-bs-theme="dark"] {
     /* Inject the BitePrep palette into Bootstrap variables */
     --bs-primary: var(--bp-primary-dark);
-    --bs-primary-rgb: 121, 166, 246; /* RGB version of #79a6f6 */
+    --bs-primary-rgb: 121, 166, 246; 
+    
+    /* Core Background/Text */
     --bs-body-bg: var(--bp-background-dark);
     --bs-body-color: #f8f9fa;
-
-    /* Override card/surface backgrounds specifically for the darker aesthetic */
-    --bs-tertiary-bg: var(--bp-surface-dark); 
     --bs-emphasis-color: #ffffff;
 
-    /* Assigning aesthetic variables for use in components */
+    /* CRITICAL: Override surface/component backgrounds. This ensures cards, navs, dropdowns, lists (used in quizzes) etc., are correct */
+    --bs-tertiary-bg: var(--bp-surface-dark);
+    --bs-card-bg: var(--bp-surface-dark);
+    --bs-accordion-bg: var(--bp-surface-dark);
+    --bs-list-group-bg: var(--bp-surface-dark);
+
+    /* Ensure borders are visible but subtle */
+    --bs-border-color: rgba(255, 255, 255, 0.15);
+    --bs-card-border-color: var(--bs-border-color);
+
+    /* Assigning aesthetic variables */
     --shadow-sm: var(--shadow-sm-dark);
     --shadow-md: var(--shadow-md-dark);
     --color-primary-hover: var(--bp-primary-hover-dark);
@@ -64,9 +81,8 @@
 /* --- 1. Base Styles & Typography --- */
 body {
     font-family: 'Inter', sans-serif;
-    /* Smooth transition when switching themes (Bootstrap handles the colors) */
     transition: background-color 0.3s, color 0.3s;
-    line-height: 1.6; /* Improved readability */
+    line-height: 1.6;
 }
 
 /* Improved typographic hierarchy */
@@ -79,7 +95,7 @@ h4, h5, h6 {
 }
 
 h1, h2, h3, h4, h5, h6 {
-    /* Use Bootstrap's emphasis color which adapts to the theme */
+    /* Ensures headings always have high contrast */
     color: var(--bs-emphasis-color);
     margin-bottom: 1rem;
 }
@@ -91,7 +107,6 @@ a {
 /* --- 2. Layout & Spacing (Breathing Room) --- */
 
 .content-container {
-    /* Increased spacing from the original 2rem */
     margin-top: 3rem;
     margin-bottom: 3rem;
 }
@@ -102,12 +117,8 @@ a {
 .navbar {
     padding-top: 1rem;
     padding-bottom: 1rem;
-}
-
-/* Ensure the navbar matches the 'surface' color in dark mode */
-[data-bs-theme="dark"] .navbar {
-    background-color: var(--bp-surface-dark);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    /* Background handled by bg-body-tertiary in HTML */
+    border-bottom: 1px solid var(--bs-border-color);
 }
 
 
@@ -118,38 +129,29 @@ a {
     font-size: 1.5rem;
 }
 
-/* Toggler icon color is handled automatically by data-bs-theme in 5.3+ */
-
-
 /* Cards - Softer, spacious, modern */
 .card {
     border-radius: var(--radius-lg); 
-    border: none;
+    border: none; /* Relying on shadow for definition */
     box-shadow: var(--shadow-md);
-    /* Background/Text color handled by Bootstrap */
+    /* Background/Text color handled by Bootstrap variables (--bs-card-bg) */
     transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background-color 0.3s;
-    margin-bottom: 2rem; /* Increased spacing between cards */
+    margin-bottom: 2rem;
 }
-
-/* Specific adjustment for dark mode card color to match the desired surface color */
-[data-bs-theme="dark"] .card {
-    background-color: var(--bp-surface-dark);
-}
-
 
 .card-header {
-    /* Rely on Bootstrap defaults for colors */
+    /* Ensure the header background matches the card */
+    background-color: transparent; 
     font-weight: 600;
     padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--bs-border-color);
 }
 
 .card-body {
-    padding: 1.5rem; /* More padding inside cards */
+    padding: 1.5rem;
 }
 
 /* Buttons - Cleaner, interactive */
-/* We must redefine the button colors because we changed the root --bs-primary variables */
-
 .btn {
     border-radius: var(--radius-sm);
     padding: 0.5rem 1.25rem;
@@ -180,6 +182,7 @@ a {
 [data-bs-theme="dark"] .btn-primary:hover,
 [data-bs-theme="dark"] .btn-primary:active,
 [data-bs-theme="dark"] .btn-primary:focus {
+    /* Dark text on light primary button */
     color: #1a1d23; 
 }
 
@@ -193,7 +196,10 @@ a {
     border-color: var(--bs-primary);
 }
 
-/* Ensure text color is readable when hovering outline buttons in dark mode */
+/* Ensure text color is readable when hovering outline buttons */
+[data-bs-theme="light"] .btn-outline-primary:hover {
+    color: #fff; 
+}
 [data-bs-theme="dark"] .btn-outline-primary:hover {
     color: #1a1d23; 
 }
@@ -201,7 +207,6 @@ a {
 /* Alerts */
 .alert {
     border-radius: var(--radius-sm);
-    border: none;
     box-shadow: var(--shadow-sm);
     padding: 1.25rem;
 }
@@ -210,11 +215,9 @@ a {
 .form-control, .form-select {
     border-radius: var(--radius-sm);
     padding: 0.75rem 1rem;
-    /* Colors handled by data-bs-theme */
 }
 
 .form-control:focus, .form-select:focus {
-    /* Focus ring uses the --bs-primary-rgb variable we defined */
     border-color: var(--bs-primary);
 }
 
@@ -223,32 +226,24 @@ a {
     border-radius: var(--radius-lg) !important;
     border: none;
     box-shadow: var(--shadow-md);
-    margin-bottom: 1.5rem; /* Space out accordion items */
+    margin-bottom: 1.5rem;
 }
-
-/* Ensure accordion matches the surface color in dark mode */
-[data-bs-theme="dark"] .accordion-item,
-[data-bs-theme="dark"] .accordion-button {
-     background-color: var(--bp-surface-dark);
-}
-
 
 .accordion-button {
     border-radius: var(--radius-lg) !important;
     font-weight: 600;
     padding: 1.25rem 1.5rem;
-     /* Colors handled by data-bs-theme */
 }
 
 .accordion-button:not(.collapsed) {
-    /* Ensure the active state uses the primary color for text but doesn't change the background drastically */
+    /* Ensure the active state uses the primary color for text. */
     color: var(--bs-primary);
-    background-color: inherit; 
+    /* Keep the background consistent rather than using the default active color tint */
+    background-color: var(--bs-accordion-bg); 
 }
 
 .accordion-button:focus {
     box-shadow: none;
-    border-color: var(--bs-primary);
 }
 
 /* Ensuring correct rounding */
@@ -282,7 +277,7 @@ a {
     transform: scale(1.1) rotate(10deg);
 }
 
-/* CSS-based Icon Switching (Updated to use data-bs-theme) */
+/* CSS-based Icon Switching */
 
 /* Light Mode: Show the Moon icon (to switch to dark) */
 [data-bs-theme="light"] .icon-light-mode {
@@ -298,4 +293,19 @@ a {
 }
 [data-bs-theme="dark"] .icon-dark-mode {
     display: none;
+}
+
+/* --- 5. Utility Class Overrides for Dark Mode (Defensive Fixes) --- */
+/* These overrides target hardcoded utility classes that might be present in the HTML of the homepage or quiz */
+
+[data-bs-theme="dark"] .bg-white,
+[data-bs-theme="dark"] .bg-light {
+    /* Force elements explicitly set to white/light to use the dark surface color */
+    background-color: var(--bp-surface-dark) !important;
+}
+
+[data-bs-theme="dark"] .text-dark,
+[data-bs-theme="dark"] .text-black {
+    /* Force elements explicitly set to dark text to use the light body color */
+    color: var(--bs-body-color) !important;
 }

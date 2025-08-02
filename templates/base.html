@@ -28,7 +28,7 @@
             const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
             // 3. Determine theme: prioritize storage, then OS preference, default to light
-            // CRITICAL CHANGE: Use data-bs-theme
+            // Use data-bs-theme for Bootstrap 5.3+
             if (storedTheme === 'dark' || (!storedTheme && prefersDark)) {
                 document.documentElement.setAttribute('data-bs-theme', 'dark');
             } else {
@@ -39,8 +39,8 @@
 
 </head>
 <body>
-    <!-- Bootstrap handles colors via data-bs-theme now. -->
-    <nav class="navbar navbar-expand-lg shadow-sm">
+    <!-- Added bg-body-tertiary for adaptive background color -->
+    <nav class="navbar navbar-expand-lg shadow-sm bg-body-tertiary">
         <div class="container-fluid">
             <!-- Brand styling handled in custom.css -->
             <a class="navbar-brand" href="{% url 'home' %}">🦷 BitePrep</a>
@@ -108,7 +108,6 @@
 
             // Handle the toggle click
             toggleButton.addEventListener('click', () => {
-                // CRITICAL CHANGE: Use data-bs-theme
                 const currentTheme = document.documentElement.getAttribute('data-bs-theme');
                 const newTheme = currentTheme === 'light' ? 'dark' : 'light';
 
