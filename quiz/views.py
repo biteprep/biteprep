@@ -203,12 +203,10 @@ def quiz_player(request, question_index):
         user_answers = quiz_context.get('user_answers', {})
         current_answer_info = user_answers.get(str(question_id), {}).copy()
 
-        # Determine if the question is being submitted for grading in this action
         is_submitted_now = current_answer_info.get('is_submitted', False)
         if quiz_mode == 'quiz' and action == 'submit_answer':
             is_submitted_now = True
 
-        # Save the selected answer if one was posted
         if submitted_answer_id_str:
             try:
                 answer = Answer.objects.get(id=int(submitted_answer_id_str), question_id=question_id)
@@ -218,7 +216,6 @@ def quiz_player(request, question_index):
                     'is_submitted': is_submitted_now
                 }
             except (Answer.DoesNotExist, ValueError): pass
-        # If an explicit submit action is taken without selecting an answer, record it
         elif is_submitted_now and str(question_id) not in user_answers:
              quiz_context['user_answers'][str(question_id)] = {'answer_id': None, 'is_correct': False, 'is_submitted': True}
         
@@ -228,15 +225,43 @@ def quiz_player(request, question_index):
         
         request.session.modified = True
 
-        # Navigation
         if action == 'prev' and question_index > 1: return redirect('quiz_player', question_index=question_index - 1)
         if action == 'next' and question_index < len(question_ids): return redirect('quiz_player', question_index=question_index + 1)
         if action == 'finish': return redirect('quiz_results')
 
     question = Question.objects.prefetch_related('answers').get(pk=question_id)
-    
     user_answers = quiz_context.get('user_answers', {})
     user_answer_info = user_answers.get(str(question_id))
+
+    # *** FIX: RESTORED TIMER AND NAVIGATOR LOGIC ***
+    seconds_remaining = None
+    if 'start_time' in quiz_context:
+        start_time = datetime.fromisoformat(quiz_context['start_time'])
+        duration = timedelta(seconds=quiz_context.get('duration_seconds', 0))
+        time_passed = timezone.now() - start_time
+        seconds_remaining = max(0, int((duration - time_passed).total_seconds()))
+        if seconds_remaining <= 0:
+            messages.info(request, "Time is up! The quiz has been automatically submitted.")
+            return redirect('quiz_results')
+
+    user_flagged_ids = set(FlaggedQuestion.objects.filter(user=request.user, question_id__in=question_ids).values_list('question_id', flat=True))
+    navigator_items = []
+    for i, q_id in enumerate(question_ids):
+        idx = i + 1
+        answer_info = user_answers.get(str(q_id))
+        btn_class = 'btn-outline-secondary'
+        if answer_info:
+            if quiz_mode == 'test':
+                 btn_class = 'btn-primary'
+            elif quiz_mode == 'quiz':
+                if answer_info.get('is_submitted'):
+                     btn_class = 'btn-success' if answer_info.get('is_correct') else 'btn-danger'
+                else:
+                    btn_class = 'btn-primary' 
+        if idx == question_index:
+            btn_class = btn_class.replace('btn-outline-', 'btn-') + ' active'
+        navigator_items.append({'index': idx, 'class': btn_class, 'is_flagged': q_id in user_flagged_ids})
+    # *** END OF RESTORED LOGIC ***
 
     if quiz_mode == 'quiz' and user_answer_info and user_answer_info.get('is_submitted'):
         is_feedback_mode = True
@@ -245,13 +270,14 @@ def quiz_player(request, question_index):
         'question': question,
         'question_index': question_index,
         'total_questions': len(question_ids),
-        'quiz_context': quiz_context, # Pass the whole context for quiz mode button logic
+        'quiz_context': quiz_context,
         'is_feedback_mode': is_feedback_mode,
         'user_selected_answer_id': user_answer_info.get('answer_id') if user_answer_info else None,
         'user_answer': Answer.objects.get(id=user_answer_info['answer_id']) if is_feedback_mode and user_answer_info and user_answer_info.get('answer_id') else None,
         'is_last_question': question_index == len(question_ids),
-        'flagged_questions': set(FlaggedQuestion.objects.filter(user=request.user, question_id__in=question_ids).values_list('question_id', flat=True)),
-        # Timer and Navigator can be added back here if needed
+        'flagged_questions': user_flagged_ids,
+        'seconds_remaining': seconds_remaining, # Added back to context
+        'navigator_items': navigator_items,   # Added back to context
     }
     return render(request, 'quiz/quiz_player.html', context)
 
