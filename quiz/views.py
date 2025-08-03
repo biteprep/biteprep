@@ -28,7 +28,7 @@ from .forms import ContactForm
 # ===================================================================
 
 def landing_page(request):
-    return render(request, 'quiz/home.html')
+    return render(request, 'quiz/landing_page.html')
 
 def contact_page(request):
     if request.method == 'POST':
