@@ -1,5 +1,3 @@
-# quiz/views.py
-
 import random
 import stripe
 import json
@@ -28,6 +26,7 @@ from .forms import ContactForm
 # ===================================================================
 
 def landing_page(request):
+    # Corrected path
     return render(request, 'quiz/landing_page.html')
 
 def contact_page(request):
@@ -43,18 +42,16 @@ def contact_page(request):
             form = ContactForm(initial=initial_data)
         else:
             form = ContactForm()
+    # Corrected path
     return render(request, 'quiz/contact.html', {'form': form})
 
 def terms_page(request):
-    """Renders the Terms and Conditions page."""
     return render(request, 'quiz/terms.html')
 
 def privacy_page(request):
-    """Renders the Privacy Policy page."""
     return render(request, 'quiz/privacy.html')
 
 def cookie_page(request):
-    """Renders the Cookie Policy page."""
     return render(request, 'quiz/cookies.html')
 
 @login_required
@@ -315,6 +312,7 @@ def quiz_results(request):
         'final_score': final_score, 'total_questions': total_questions,
         'percentage_score': round(percentage_score, 2), 'review_data': review_data
     }
+    # Corrected path
     return render(request, 'quiz/results.html', context)
 
 @login_required
