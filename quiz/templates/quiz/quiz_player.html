@@ -2,7 +2,8 @@
 
 {% block title %}Question {{ question_index }} - BitePrep{% endblock %}
 
-{% block content %}<form id="quiz-player-form" method="POST" action="{% url 'quiz_player' question_index=question_index %}">
+{% block content %}
+<form id="quiz-player-form" method="POST" action="{% url 'quiz_player' question_index=question_index %}">
     {% csrf_token %}
     <div class="row">
         <div class="col-lg-9">
@@ -48,7 +49,6 @@
                         <div class="list-group">
                             {% for answer in question.answers.all %}
                                 <label class="list-group-item list-group-item-action">
-                                    {# This logic correctly pre-selects the radio button if user_selected_answer_id matches #}
                                     <input class="form-check-input me-2" type="radio" name="answer" value="{{ answer.id }}" {% if user_selected_answer_id == answer.id %}checked{% endif %}>
                                     {{ answer.answer_text }}
                                 </label>
@@ -94,13 +94,10 @@
                 <div class="card-header fw-bold"><i class="bi bi-compass-fill"></i> Navigator</div>
                 <div class="card-body" style="max-height: 60vh; overflow-y: auto;">
                     <div class="d-flex flex-wrap">
-                        {# BUG #1 Fix: Changed <a> tags to <button> tags. This ensures the form is POSTed when navigating. #}
                         {% for item in navigator_items %}
-                            <button type="submit" 
-                                    name="navigate_to" 
-                                    value="{{ item.index }}"
-                                    class="btn {{ item.class }} me-1 mb-1 position-relative d-flex justify-content-center align-items-center" 
-                                    style="width: 45px; height: 45px;">
+                            <button type="submit" name="navigate_to" value="{{ item.index }}" 
+                               class="btn {{ item.class }} me-1 mb-1 position-relative d-flex justify-content-center align-items-center" 
+                               style="width: 45px; height: 45px;">
                                 {{ item.index }}
                                 {% if item.is_flagged %}<span class="position-absolute top-0 start-100 translate-middle p-1 bg-warning border border-light rounded-circle"><span class="visually-hidden">Flagged</span></span>{% endif %}
                             </button>
@@ -110,7 +107,81 @@
                 <div class="card-footer"><div class="d-grid"><button id="finish-quiz-button" type="submit" name="action" value="finish" class="btn btn-danger">End & See Results</button></div></div>
             </div>
         </div>
-    </div></form>
+    </div>
+</form>
 
-{% if question.question_image %}<div class="modal fade" id="imageModal"><div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Question Image</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-center"><img src="{{ question.question_image.url }}" class="img-fluid"></div></div></div></div>
+{% if question.question_image %}
+<div class="modal fade" id="imageModal"><div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Question Image</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-center"><img src="{{ question.question_image.url }}" class="img-fluid"></div></div></div></div>
 {% endif %}
+<div class="modal fade" id="reportModal"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Report an Issue</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><form id="report-question-form"><div class="modal-body"><div class="mb-3"><label for="report-reason" class="form-label">What is the issue?</label><textarea class="form-control" id="report-reason" rows="4" required></textarea></div><div id="report-feedback-message" class="text-center"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="button" class="btn btn-primary" id="submit-report-btn">Submit Report</button></div></form></div></div></div>
+{% endblock %}
+
+{% block scripts %}
+{{ seconds_remaining|json_script:"timer-data" }}
+{{ question.id|json_script:"question-id-data" }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // TIMER SCRIPT
+    const timerDataEl = document.getElementById('timer-data');
+    if (timerDataEl) {
+        let secondsRemaining = JSON.parse(timerDataEl.textContent);
+        const timerDisplay = document.getElementById('timer');
+        if (secondsRemaining !== null && timerDisplay) {
+            const timerInterval = setInterval(() => {
+                if (secondsRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    timerDisplay.textContent = 'Time Up!';
+                    document.getElementById('finish-quiz-button').click();
+                    return;
+                }
+                secondsRemaining--;
+                const minutes = Math.floor(secondsRemaining / 60);
+                const seconds = secondsRemaining % 60;
+                timerDisplay.textContent = `Time Left: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+    }
+    // AJAX Report Submission
+    const reportBtn = document.getElementById('submit-report-btn');
+    const csrfToken = document.querySelector('form#quiz-player-form [name=csrfmiddlewaretoken]').value;
+    if(reportBtn) {
+        reportBtn.addEventListener('click', function() {
+            const reason = document.getElementById('report-reason').value;
+            const questionId = JSON.parse(document.getElementById('question-id-data').textContent);
+            const feedbackEl = document.getElementById('report-feedback-message');
+            if (!reason.trim()) {
+                feedbackEl.textContent = 'Please provide a reason for the report.';
+                feedbackEl.className = 'text-danger';
+                return;
+            }
+            fetch("{% url 'report_question' %}", {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                body: JSON.stringify({question_id: questionId, reason: reason})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    feedbackEl.textContent = data.message;
+                    feedbackEl.className = 'text-success';
+                    document.getElementById('report-reason').value = '';
+                    setTimeout(() => {
+                        const modalEl = document.getElementById('reportModal');
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) { modal.hide(); }
+                        feedbackEl.textContent = '';
+                    }, 2000);
+                } else {
+                    feedbackEl.textContent = data.message || 'An error occurred.';
+                    feedbackEl.className = 'text-danger';
+                }
+            })
+            .catch(error => {
+                feedbackEl.textContent = 'A network error occurred.';
+                feedbackEl.className = 'text-danger';
+            });
+        });
+    }
+});
+</script>
+{% endblock %}
