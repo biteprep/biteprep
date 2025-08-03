@@ -17,6 +17,7 @@ from django.contrib import messages
 from django.urls import reverse
 from django.utils import timezone
 # Assuming these models exist based on the original prompt
+# We must import all models that are used.
 from .models import Category, Question, Answer, UserAnswer, QuestionReport, ContactInquiry, Topic, FlaggedQuestion
 
 # Robustly import Profile and ContactForm, providing fallbacks if they are not available in the current context
@@ -24,9 +25,11 @@ try:
     from users.models import Profile
 except ImportError:
     # Define a dummy Profile if import fails, allowing the build to proceed.
+    # This is primarily for environments where the 'users' app might not be fully set up yet.
     class Profile:
         membership = 'Free'
         membership_expiry_date = None
+        DoesNotExist = Exception # Mock DoesNotExist for exception handling if Profile is dummy
 
 try:
     from .forms import ContactForm
@@ -39,7 +42,7 @@ except ImportError:
 MAX_QUESTIONS_PER_QUIZ = 500
 
 # --- Placeholder Views (To fix deployment errors) ---
-# These are required by quiz/urls.py but were missing from the previous snippet.
+# These are required by quiz/urls.py.
 
 def landing_page(request):
     # Placeholder implementation
@@ -48,6 +51,16 @@ def landing_page(request):
 def contact_page(request):
     # Placeholder implementation
     return HttpResponse("Contact Page Placeholder. Replace with actual implementation.")
+
+# FIX for the latest deployment error: Added missing terms_page
+def terms_page(request):
+    # Placeholder implementation
+    return HttpResponse("Terms and Conditions Placeholder. Replace with actual implementation.")
+
+# Anticipating privacy_page might also be needed.
+def privacy_page(request):
+    # Placeholder implementation
+    return HttpResponse("Privacy Policy Placeholder. Replace with actual implementation.")
 
 @login_required
 def dashboard(request):
@@ -109,7 +122,7 @@ def start_flagged_quiz(request):
     messages.info(request, "Start flagged quiz placeholder.")
     return redirect('quiz_setup')
 
-# --- Core Quiz Views (With Bug Fixes from previous turn) ---
+# --- Core Quiz Views (With Bug Fixes implemented previously) ---
 
 @login_required
 def quiz_setup(request):
@@ -117,7 +130,8 @@ def quiz_setup(request):
         # Ensure Profile is accessed correctly and safely
         try:
             profile = request.user.profile
-        except AttributeError:
+        except (AttributeError, Profile.DoesNotExist):
+            # Handle cases where the user might not have a profile object yet
             messages.error(request, "User profile not found. Cannot start quiz.")
             return redirect('dashboard')
 
@@ -164,8 +178,8 @@ def quiz_setup(request):
         # Bug #3 Fix: Enforce a hard limit to prevent session data issues.
         if len(question_ids) > MAX_QUESTIONS_PER_QUIZ:
             # Only show this message if the Free tier limit wasn't the primary reason for truncation
-            # This check ensures we don't spam messages if the free tier limit was already applied.
-            if profile.membership != 'Free':
+            # We check if they are not 'Free' OR if the count was actually larger than the free limit before truncation.
+            if profile.membership != 'Free' or len(question_ids) > FREE_TIER_LIMIT:
                  messages.warning(request, f"To ensure stability, the quiz has been limited to the maximum of {MAX_QUESTIONS_PER_QUIZ} questions.")
             question_ids = question_ids[:MAX_QUESTIONS_PER_QUIZ]
 
@@ -199,6 +213,7 @@ def quiz_setup(request):
 @login_required
 def start_quiz(request):
     if 'quiz_context' in request.session:
+        # Reset user answers when explicitly starting the quiz
         request.session['quiz_context']['user_answers'] = {}
         request.session.modified = True
         return redirect('quiz_player', question_index=1)
@@ -242,6 +257,10 @@ def quiz_player(request, question_index):
             try:
                 answer_obj = Answer.objects.get(id=int(submitted_answer_id_str))
                 
+                # Optional: Validate that the answer belongs to the question
+                if answer_obj.question_id != question_id:
+                     raise ValueError("Answer does not match question.")
+
                 # Save the selection and the submission status
                 quiz_context['user_answers'][str(question_id)] = { 
                     'answer_id': answer_obj.id, 
@@ -251,13 +270,15 @@ def quiz_player(request, question_index):
             except (Answer.DoesNotExist, ValueError):
                 pass
         
-        # Handle the case where 'submit_answer' was clicked but no answer was selected yet
-        if is_submitted and str(question_id) not in quiz_context['user_answers']:
-             quiz_context['user_answers'][str(question_id)] = {
-                 'answer_id': None,
-                 'is_correct': False, # No answer selected is considered incorrect
-                 'is_submitted': True
-             }
+        # Handle the case where 'submit_answer' was clicked but perhaps no answer was selected yet
+        if is_submitted:
+            # Ensure that if it's submitted, the status is recorded even if no selection was made or if the selection failed validation
+            if str(question_id) not in quiz_context['user_answers']:
+                quiz_context['user_answers'][str(question_id)] = {
+                    'answer_id': None,
+                    'is_correct': False, # No answer selected is considered incorrect
+                    'is_submitted': True
+                }
 
         if action == 'toggle_flag':
             flag, created = FlaggedQuestion.objects.get_or_create(user=request.user, question_id=question_id)
@@ -293,12 +314,15 @@ def quiz_player(request, question_index):
         question = Question.objects.select_related('subtopic__topic').prefetch_related('answers').get(pk=question_id)
     except Question.DoesNotExist:
         messages.error(request, f"Question ID {question_id} not found. Returning to setup.")
+        # Clean up session if the quiz is corrupted
+        if 'quiz_context' in request.session:
+            del request.session['quiz_context']
         return redirect('quiz_setup')
 
     
     # Timer logic
     seconds_remaining = None
-    if 'start_time' in quiz_context:
+    if 'start_time' in quiz_context and 'duration_seconds' in quiz_context:
         try:
             start_time = datetime.fromisoformat(quiz_context['start_time'])
             duration = timedelta(seconds=quiz_context.get('duration_seconds', 0))
@@ -307,8 +331,8 @@ def quiz_player(request, question_index):
             if seconds_remaining <= 0 and quiz_mode == 'test':
                 messages.info(request, "Time is up! The quiz has been automatically submitted.")
                 return redirect('quiz_results')
-        except ValueError:
-            # Handle potential ISO format errors if session data is corrupted
+        except (ValueError, TypeError):
+            # Handle potential ISO format errors or type errors if session data is corrupted
             pass
             
     user_flagged_question_ids = list(FlaggedQuestion.objects.filter(user=request.user).values_list('question_id', flat=True))
@@ -323,17 +347,18 @@ def quiz_player(request, question_index):
         
         if answer_info:
             if quiz_mode == 'test':
-                 # In test mode, just show it is answered (using success as the original code did)
+                 # In test mode, just show it is answered (using success as the original code intended)
                  button_class = 'btn-success'
             elif quiz_mode == 'quiz':
                 # In quiz mode, show correctness only if submitted (Bug #2)
                 if answer_info.get('is_submitted'):
                      button_class = 'btn-success' if answer_info.get('is_correct') else 'btn-danger'
                 else:
-                    # Optional: Indicate answered but not submitted
+                    # Indicate answered but not submitted
                     button_class = 'btn-primary' 
 
         if idx == question_index:
+            # Highlight the current question
             button_class = button_class.replace('btn-outline-', 'btn-') + ' active'
             
         navigator_items.append({ 'index': idx, 'class': button_class, 'is_flagged': q_id in user_flagged_question_ids })
@@ -351,7 +376,11 @@ def quiz_player(request, question_index):
     user_answer_obj = None
     if is_feedback_mode and user_selected_answer_id:
         try:
-            user_answer_obj = Answer.objects.get(id=user_selected_answer_id)
+            # Optimization: Try to get the answer from the prefetched list first
+            user_answer_obj = next((a for a in question.answers.all() if a.id == user_selected_answer_id), None)
+            if not user_answer_obj:
+                 # Fallback to DB query if not found in prefetch (should be rare)
+                 user_answer_obj = Answer.objects.get(id=user_selected_answer_id)
         except Answer.DoesNotExist:
             pass
             
