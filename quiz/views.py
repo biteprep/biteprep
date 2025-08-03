@@ -27,11 +27,9 @@ MAX_QUESTIONS_PER_QUIZ = 500
 # --- Standard Page Views ---
 
 def landing_page(request):
-    """Renders the main landing page."""
     return render(request, 'quiz/landing_page.html')
 
 def contact_page(request):
-    """Renders the contact page and handles form submission."""
     if request.method == 'POST':
         form = ContactForm(request.POST)
         if form.is_valid():
@@ -46,25 +44,20 @@ def contact_page(request):
     return render(request, 'quiz/contact.html', {'form': form})
 
 def terms_page(request):
-    """Renders the Terms and Conditions page."""
     return render(request, 'quiz/terms.html')
 
 def privacy_page(request):
-    """Renders the Privacy Policy page."""
     return render(request, 'quiz/privacy.html')
 
 def cookie_page(request):
-    """Renders the Cookie Policy page."""
     return render(request, 'quiz/cookies.html')
 
 @login_required
 def membership_page(request):
-    """Renders the membership/subscription plans page."""
     return render(request, 'quiz/membership.html')
 
 @login_required
 def dashboard(request):
-    """Renders the user's dashboard with performance statistics."""
     user_answers = UserAnswer.objects.filter(user=request.user)
     total_answered = user_answers.count()
     correct_answered = user_answers.filter(is_correct=True).count()
@@ -109,7 +102,8 @@ def dashboard(request):
     }
     return render(request, 'quiz/dashboard.html', context)
 
-# --- Core Quiz Views (With Bug Fixes) ---
+
+# --- Core Quiz Views (With All Bug Fixes) ---
 
 @login_required
 def quiz_setup(request):
@@ -117,7 +111,7 @@ def quiz_setup(request):
         profile = request.user.profile
         is_active_subscription = profile.membership_expiry_date and profile.membership_expiry_date >= date.today()
         if not (profile.membership == 'Free' or is_active_subscription):
-            messages.warning(request, "Your subscription has expired. Please renew your plan to continue.")
+            messages.warning(request, "Your subscription has expired. Please renew your plan.")
             return redirect('membership_page')
         
         selected_subtopic_ids = request.POST.getlist('subtopics')
@@ -193,14 +187,15 @@ def quiz_player(request, question_index):
     if not quiz_context:
         messages.error(request, "Quiz session not found. Please start a new quiz.")
         return redirect('quiz_setup')
-    
+
     question_ids = quiz_context.get('question_ids', [])
     if not (0 < question_index <= len(question_ids)):
         return redirect('quiz_results')
         
     question_id = question_ids[question_index - 1]
+    quiz_mode = quiz_context.get('mode', 'quiz')
     is_feedback_mode = False
-    
+
     if request.method == 'POST':
         action = request.POST.get('action')
         submitted_answer_id_str = request.POST.get('answer')
@@ -208,21 +203,24 @@ def quiz_player(request, question_index):
         user_answers = quiz_context.get('user_answers', {})
         current_answer_info = user_answers.get(str(question_id), {}).copy()
 
-        is_submitted = current_answer_info.get('is_submitted', False)
-        if quiz_context.get('mode') == 'quiz' and action == 'submit_answer':
-            is_submitted = True
+        # Determine if the question is being submitted for grading in this action
+        is_submitted_now = current_answer_info.get('is_submitted', False)
+        if quiz_mode == 'quiz' and action == 'submit_answer':
+            is_submitted_now = True
 
+        # Save the selected answer if one was posted
         if submitted_answer_id_str:
             try:
                 answer = Answer.objects.get(id=int(submitted_answer_id_str), question_id=question_id)
                 quiz_context['user_answers'][str(question_id)] = { 
                     'answer_id': answer.id, 
                     'is_correct': answer.is_correct,
-                    'is_submitted': is_submitted
+                    'is_submitted': is_submitted_now
                 }
             except (Answer.DoesNotExist, ValueError): pass
-        elif is_submitted and str(question_id) not in quiz_context['user_answers']:
-            quiz_context['user_answers'][str(question_id)] = {'answer_id': None, 'is_correct': False, 'is_submitted': True}
+        # If an explicit submit action is taken without selecting an answer, record it
+        elif is_submitted_now and str(question_id) not in user_answers:
+             quiz_context['user_answers'][str(question_id)] = {'answer_id': None, 'is_correct': False, 'is_submitted': True}
         
         if action == 'toggle_flag':
             flag, created = FlaggedQuestion.objects.get_or_create(user=request.user, question_id=question_id)
@@ -230,37 +228,30 @@ def quiz_player(request, question_index):
         
         request.session.modified = True
 
+        # Navigation
         if action == 'prev' and question_index > 1: return redirect('quiz_player', question_index=question_index - 1)
         if action == 'next' and question_index < len(question_ids): return redirect('quiz_player', question_index=question_index + 1)
         if action == 'finish': return redirect('quiz_results')
 
     question = Question.objects.prefetch_related('answers').get(pk=question_id)
     
-    seconds_remaining = None
-    if 'start_time' in quiz_context:
-        start_time = datetime.fromisoformat(quiz_context['start_time'])
-        duration = timedelta(seconds=quiz_context.get('duration_seconds', 0))
-        if (timezone.now() - start_time) > duration:
-            messages.info(request, "Time is up! The quiz has been automatically submitted.")
-            return redirect('quiz_results')
-        seconds_remaining = int((duration - (timezone.now() - start_time)).total_seconds())
-            
-    user_flagged_question_ids = set(FlaggedQuestion.objects.filter(user=request.user, question_id__in=question_ids).values_list('question_id', flat=True))
-    
     user_answers = quiz_context.get('user_answers', {})
     user_answer_info = user_answers.get(str(question_id))
-    
-    if quiz_context.get('mode') == 'quiz' and user_answer_info and user_answer_info.get('is_submitted'):
+
+    if quiz_mode == 'quiz' and user_answer_info and user_answer_info.get('is_submitted'):
         is_feedback_mode = True
-            
+    
     context = {
-        'question': question, 'question_index': question_index, 'total_questions': len(question_ids),
+        'question': question,
+        'question_index': question_index,
+        'total_questions': len(question_ids),
+        'quiz_context': quiz_context, # Pass the whole context for quiz mode button logic
         'is_feedback_mode': is_feedback_mode,
         'user_selected_answer_id': user_answer_info.get('answer_id') if user_answer_info else None,
+        'user_answer': Answer.objects.get(id=user_answer_info['answer_id']) if is_feedback_mode and user_answer_info and user_answer_info.get('answer_id') else None,
         'is_last_question': question_index == len(question_ids),
-        'seconds_remaining': seconds_remaining,
-        'flagged_questions': user_flagged_question_ids,
-        'quiz_mode': quiz_context.get('mode', 'quiz')
+        'flagged_questions': set(FlaggedQuestion.objects.filter(user=request.user, question_id__in=question_ids).values_list('question_id', flat=True)),
+        # Timer and Navigator can be added back here if needed
     }
     return render(request, 'quiz/quiz_player.html', context)
 
@@ -297,7 +288,6 @@ def quiz_results(request):
     return render(request, 'quiz/results.html', context)
 
 # --- Other Views ---
-
 @login_required
 def reset_performance(request):
     if request.method == 'POST':
@@ -340,17 +330,8 @@ def report_question(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
 @login_required
-def create_checkout_session(request):
-    # This view is not implemented
-    pass
-
-def success_page(request):
-    return render(request, 'quiz/payment_success.html')
-
-def cancel_page(request):
-    return render(request, 'quiz/payment_canceled.html')
-
+def create_checkout_session(request): pass
+def success_page(request): return render(request, 'quiz/payment_success.html')
+def cancel_page(request): return render(request, 'quiz/payment_canceled.html')
 @csrf_exempt
-def stripe_webhook(request):
-    # This view is not implemented
-    return HttpResponse(status=200)
+def stripe_webhook(request): return HttpResponse(status=200)
