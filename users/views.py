@@ -18,13 +18,12 @@ def signup(request):
             return redirect('signup_success')
     else:
         form = CustomUserCreationForm()
-    # This path is now correct for your file structure
     return render(request, 'registration/signup.html', {'form': form})
 
 @login_required
 def signup_success(request):
-    # This path is now correct for your file structure
-    return render(request, 'registration/signup_complete.html')
+    # Corrected to match your filename: signup_success.html
+    return render(request, 'registration/signup_success.html')
 
 def logout_view(request):
     logout(request)
@@ -33,8 +32,8 @@ def logout_view(request):
 
 @login_required
 def account_page(request):
-    # This path is now correct for your file structure
-    return render(request, 'registration/account.html')
+    # Corrected to match your filename: account_page.html
+    return render(request, 'registration/account_page.html')
 
 @login_required
 def delete_account(request):
