@@ -225,6 +225,17 @@ def quiz_player(request, question_index):
         
         request.session.modified = True
 
+        # *** FIX: ADDED LOGIC TO HANDLE NAVIGATOR CLICKS ***
+        navigate_to_index_str = request.POST.get('navigate_to')
+        if navigate_to_index_str:
+            try:
+                target_index = int(navigate_to_index_str)
+                if 0 < target_index <= len(question_ids):
+                    return redirect('quiz_player', question_index=target_index)
+            except (ValueError, TypeError):
+                pass # Ignore if the value is not a valid number
+        # *** END FIX ***
+        
         if action == 'prev' and question_index > 1: return redirect('quiz_player', question_index=question_index - 1)
         if action == 'next' and question_index < len(question_ids): return redirect('quiz_player', question_index=question_index + 1)
         if action == 'finish': return redirect('quiz_results')
@@ -233,7 +244,6 @@ def quiz_player(request, question_index):
     user_answers = quiz_context.get('user_answers', {})
     user_answer_info = user_answers.get(str(question_id))
 
-    # *** FIX: RESTORED TIMER AND NAVIGATOR LOGIC ***
     seconds_remaining = None
     if 'start_time' in quiz_context:
         start_time = datetime.fromisoformat(quiz_context['start_time'])
@@ -261,7 +271,6 @@ def quiz_player(request, question_index):
         if idx == question_index:
             btn_class = btn_class.replace('btn-outline-', 'btn-') + ' active'
         navigator_items.append({'index': idx, 'class': btn_class, 'is_flagged': q_id in user_flagged_ids})
-    # *** END OF RESTORED LOGIC ***
 
     if quiz_mode == 'quiz' and user_answer_info and user_answer_info.get('is_submitted'):
         is_feedback_mode = True
@@ -276,8 +285,8 @@ def quiz_player(request, question_index):
         'user_answer': Answer.objects.get(id=user_answer_info['answer_id']) if is_feedback_mode and user_answer_info and user_answer_info.get('answer_id') else None,
         'is_last_question': question_index == len(question_ids),
         'flagged_questions': user_flagged_ids,
-        'seconds_remaining': seconds_remaining, # Added back to context
-        'navigator_items': navigator_items,   # Added back to context
+        'seconds_remaining': seconds_remaining,
+        'navigator_items': navigator_items,
     }
     return render(request, 'quiz/quiz_player.html', context)
 
