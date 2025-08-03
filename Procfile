@@ -1,1 +1,1 @@
-web: gunicorn biteprep_project.wsgi --log-file -
+web: gunicorn biteprep_project.wsgi --log-level debug --access-logfile - --error-logfile -

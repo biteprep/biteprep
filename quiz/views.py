@@ -28,8 +28,6 @@ from .forms import ContactForm
 # ===================================================================
 
 def landing_page(request):
-    # This line is added temporarily for testing the error logging.
-    assert False, "This is a test to see if tracebacks appear in the Render logs."
     return render(request, 'quiz/home.html')
 
 def contact_page(request):
