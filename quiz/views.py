@@ -28,6 +28,7 @@ from .forms import ContactForm
 # ===================================================================
 
 def landing_page(request):
+    # Corrected to point to the actual template file
     return render(request, 'quiz/landing_page.html')
 
 def contact_page(request):
@@ -43,6 +44,7 @@ def contact_page(request):
             form = ContactForm(initial=initial_data)
         else:
             form = ContactForm()
+    # Corrected to point to the actual template file 'contact.html'
     return render(request, 'quiz/contact.html', {'form': form})
 
 def terms_page(request):
