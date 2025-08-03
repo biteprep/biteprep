@@ -5,17 +5,40 @@
 <div class="card shadow-sm">
     <div class="card-body p-4 p-md-5">
         <h1 class="card-title text-center mb-4">Cookie Policy</h1>
-        <p class="lead">Last updated: August 3, 2025</p>
+        <p class="lead">Last Updated: August 3, 2025</p>
         <hr>
+
         <h2 class="h4 mt-4">1. What Are Cookies?</h2>
-        <p>Cookies are small text files stored on your device that are used to help websites function and gather information about user activity.</p>
+        <p>Cookies are small text files placed on your device by websites that you visit. They are widely used to make websites work, or work more efficiently, as well as to provide information to the owners of the site.</p>
 
         <h2 class="h4 mt-4">2. How We Use Cookies</h2>
-        <p>We use essential cookies to manage your session (e.g., keeping you logged in) and preferences (e.g., your light/dark mode choice). Third-party services like Stripe may also set cookies to function correctly.</p>
+        <p>We use a minimal number of cookies to provide a functional experience on BitePrep.</p>
+        <ul>
+            <li><strong>Strictly Necessary Cookies:</strong> These are essential for you to browse the website and use its features.
+                <ul>
+                    <li><code>sessionid</code>: A cookie from Django that keeps you logged in.</li>
+                    <li><code>csrftoken</code>: A cookie from Django used for security to prevent Cross-Site Request Forgery attacks.</li>
+                </ul>
+            </li>
+            <li><strong>Third-Party Cookies:</strong>
+                <ul>
+                    <li><strong>Stripe:</strong> Our payment processor, Stripe, may set cookies that are necessary for their payment forms and services to function securely and correctly.</li>
+                </ul>
+            </li>
+        </ul>
 
+        <h2 class="h4 mt-4">3. Use of Local Storage</h2>
+        <p>We use your browser's <strong>Local Storage</strong> (which is similar to cookies but can store more information) to remember your preference for the light or dark theme. This is a preference setting and does not store personal information.</p>
+
+        <h2 class="h4 mt-4">4. Your Choices</h2>
+        <p>You can use your web browser settings to manage your cookie preferences. You can delete or block cookies, but be aware that if you do, some parts of our Service may not function correctly.</p>
+
+        <h2 class="h4 mt-4">5. Contact Us</h2>
+        <p>If you have any questions about our use of cookies, please contact us at: <code>biteprep@outlook.com</code>.</p>
+        
         <div class="alert alert-warning mt-4">
-            <strong>Disclaimer:</strong> This is a placeholder document. You must replace this content with a legally compliant Cookie Policy drafted or reviewed by a qualified legal professional.
+            <strong>Disclaimer:</strong> This is a template and not legal advice. This document must be reviewed by a qualified legal professional to ensure it is appropriate for your specific circumstances.
         </div>
-        </div>
+    </div>
 </div>
 {% endblock %}

@@ -5,17 +5,59 @@
 <div class="card shadow-sm">
     <div class="card-body p-4 p-md-5">
         <h1 class="card-title text-center mb-4">Privacy Policy</h1>
-        <p class="lead">Last updated: August 3, 2025</p>
+        <p class="lead">Last Updated: August 3, 2025</p>
         <hr>
-        <h2 class="h4 mt-4">1. Information We Collect</h2>
-        <p>We collect personal information such as your name, email address, and performance data when you register and use our service. We also work with third-party providers like Stripe for payment processing.</p>
+
+        <h2 class="h4 mt-4">1. Introduction</h2>
+        <p>BitePrep ("we", "our", "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website. This policy is compliant with the UK General Data Protection Regulation (UK GDPR).</p>
+
+        <h2 class="h4 mt-4">2. Information We Collect</h2>
+        <p>We may collect the following information:</p>
+        <ul>
+            <li><strong>Personal Data:</strong> When you register, you provide us with your <strong>username</strong> and <strong>email address</strong>.</li>
+            <li><strong>Performance Data:</strong> We automatically collect data on your quiz performance, including which questions you answer and whether your answers are correct. This is used to provide you with performance analytics.</li>
+            <li><strong>Payment Data:</strong> We use <strong>Stripe</strong> to process payments. We do not store your full credit card details. We do store your <code>stripe_customer_id</code> to manage your subscription.</li>
+        </ul>
+
+        <h2 class="h4 mt-4">3. How We Use Your Information</h2>
+        <p>We use the information we collect to:</p>
+        <ul>
+            <li>Create and manage your account.</li>
+            <li>Provide, operate, and maintain our Service.</li>
+            <li>Process your payments and manage your subscription.</li>
+            <li>Display your performance statistics on your personal dashboard.</li>
+            <li>Communicate with you, including responding to your support requests.</li>
+        </ul>
+
+        <h2 class="h4 mt-4">4. Legal Basis for Processing</h2>
+        <p>Under UK GDPR, we process your data on the following legal bases:</p>
+        <ul>
+            <li><strong>Performance of a Contract:</strong> To provide the Service you have signed up for.</li>
+            <li><strong>Legitimate Interests:</strong> To improve our Service and for administrative purposes.</li>
+        </ul>
+
+        <h2 class="h4 mt-4">5. Data Sharing</h2>
+        <p>We do not sell your personal information. We may share your information with the following third parties:</p>
+        <ul>
+            <li><strong>Stripe:</strong> To process your subscription payments.</li>
+            <li><strong>Render:</strong> Our hosting provider, where our application and database are stored.</li>
+        </ul>
+
+        <h2 class="h4 mt-4">6. Data Retention</h2>
+        <p>We will retain your personal information only for as long as is necessary for the purposes set out in this Privacy Policy, primarily as long as your account is active.</p>
+
+        <h2 class="h4 mt-4">7. Your Data Protection Rights</h2>
+        <p>Under UK GDPR, you have the following rights: The right to <strong>access</strong>, <strong>update</strong>, or <strong>delete</strong> the information we have on you; the right of <strong>rectification</strong>; the right to <strong>object</strong> to processing; and the right of <strong>data portability</strong>. You can exercise these rights by accessing your account settings or contacting us.</p>
+
+        <h2 class="h4 mt-4">8. Cookies</h2>
+        <p>We use cookies to maintain your session and preferences. For more information, please see our full <a href="{% url 'cookie_page' %}">Cookie Policy</a>.</p>
         
-        <h2 class="h4 mt-4">2. How We Use Your Information</h2>
-        <p>We use the information we collect to provide, maintain, and improve our services, process transactions, and communicate with you.</p>
-        
+        <h2 class="h4 mt-4">9. Contact Us</h2>
+        <p>If you have any questions about this Privacy Policy, please contact us at: <code>biteprep@outlook.com</code>.</p>
+
         <div class="alert alert-warning mt-4">
-            <strong>Disclaimer:</strong> This is a placeholder document. You must replace this content with a legally compliant Privacy Policy agreement drafted or reviewed by a qualified legal professional, ensuring it meets UK GDPR requirements.
+            <strong>Disclaimer:</strong> This is a template and not legal advice. This document must be reviewed by a qualified legal professional to ensure it is appropriate for your specific circumstances.
         </div>
-        </div>
+    </div>
 </div>
 {% endblock %}
