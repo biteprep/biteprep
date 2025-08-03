@@ -1,9 +1,12 @@
+# users/views.py
+
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.conf import settings
 import stripe
+
 from .forms import CustomUserCreationForm
 
 def signup(request):
@@ -15,17 +18,24 @@ def signup(request):
             return redirect('signup_success')
     else:
         form = CustomUserCreationForm()
-    return render(request, 'users/signup.html', {'form': form})
+    # This path is now correct for your file structure
+    return render(request, 'registration/signup.html', {'form': form})
+
 @login_required
 def signup_success(request):
-    return render(request, 'users/signup_complete.html')
+    # This path is now correct for your file structure
+    return render(request, 'registration/signup_complete.html')
+
 def logout_view(request):
     logout(request)
     messages.info(request, "You have been successfully logged out.")
     return redirect('home')
+
 @login_required
 def account_page(request):
-    return render(request, 'users/account.html')
+    # This path is now correct for your file structure
+    return render(request, 'registration/account.html')
+
 @login_required
 def delete_account(request):
     if request.method == 'POST':
@@ -35,6 +45,7 @@ def delete_account(request):
         messages.success(request, "Your account has been successfully deleted.")
         return redirect('home')
     return redirect('account')
+
 @login_required
 def manage_subscription(request):
     stripe.api_key = settings.STRIPE_SECRET_KEY
