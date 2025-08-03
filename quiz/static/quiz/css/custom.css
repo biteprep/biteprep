@@ -22,14 +22,14 @@
     /* Modern, subtle shadows - Added Large shadow for interactivity */
     --shadow-sm-light: 0 2px 6px rgba(0, 0, 0, 0.05);
     --shadow-md-light: 0 8px 25px rgba(0, 0, 0, 0.08);
-    --shadow-lg-light: 0 15px 40px rgba(0, 0, 0, 0.1); /* New for hover */
+    --shadow-lg-light: 0 15px 45px rgba(50, 50, 93, 0.15); /* Refined for better lift effect */
     
     --shadow-sm-dark: 0 2px 6px rgba(0, 0, 0, 0.3);
     --shadow-md-dark: 0 8px 25px rgba(0, 0, 0, 0.5);
-    --shadow-lg-dark: 0 15px 40px rgba(0, 0, 0, 0.6); /* New for hover */
+    --shadow-lg-dark: 0 15px 45px rgba(0, 0, 0, 0.7); 
 
     /* Smooth transition definition */
-    --transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+    --transition-fast: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
     
     /* Define radii for modernization */
     --radius-sm: 8px;
@@ -38,17 +38,14 @@
 
 /* Light Mode Overrides for Bootstrap Variables */
 [data-bs-theme="light"] {
-    /* Inject the BitePrep palette into Bootstrap variables */
     --bs-primary: var(--bp-primary-light);
     --bs-primary-rgb: 59, 113, 202; 
     --bs-body-bg: var(--bp-background-light);
     
-    /* Ensure surfaces (cards, nav) are pure white */
     --bs-tertiary-bg: var(--bp-surface-light);
     --bs-card-bg: var(--bp-surface-light);
     --bs-list-group-bg: var(--bp-surface-light);
     
-    /* Assigning aesthetic variables */
     --shadow-sm: var(--shadow-sm-light);
     --shadow-md: var(--shadow-md-light);
     --shadow-lg: var(--shadow-lg-light);
@@ -57,26 +54,21 @@
 
 /* Dark Mode Overrides for Bootstrap Variables */
 [data-bs-theme="dark"] {
-    /* Inject the BitePrep palette into Bootstrap variables */
     --bs-primary: var(--bp-primary-dark);
     --bs-primary-rgb: 121, 166, 246; 
     
-    /* Core Background/Text */
     --bs-body-bg: var(--bp-background-dark);
     --bs-body-color: #f8f9fa;
     --bs-emphasis-color: #ffffff;
 
-    /* CRITICAL: Override surface/component backgrounds. */
     --bs-tertiary-bg: var(--bp-surface-dark);
     --bs-card-bg: var(--bp-surface-dark);
     --bs-accordion-bg: var(--bp-surface-dark);
     --bs-list-group-bg: var(--bp-surface-dark);
 
-    /* Ensure borders are visible but subtle */
     --bs-border-color: rgba(255, 255, 255, 0.15);
     --bs-card-border-color: var(--bs-border-color);
 
-    /* Assigning aesthetic variables */
     --shadow-sm: var(--shadow-sm-dark);
     --shadow-md: var(--shadow-md-dark);
     --shadow-lg: var(--shadow-lg-dark);
@@ -90,26 +82,19 @@ body {
     line-height: 1.6;
 }
 
-/* Improved typographic hierarchy */
-h1, h2, h3 {
-    font-weight: 700; 
-}
-
-h4, h5, h6 {
-    font-weight: 600; 
-}
+h1, h2, h3 { font-weight: 700; }
+h4, h5, h6 { font-weight: 600; }
 
 h1, h2, h3, h4, h5, h6 {
-    /* Ensures headings always have high contrast */
     color: var(--bs-emphasis-color);
     margin-bottom: 1rem;
 }
 
 a {
-    transition: var(--transition);
+    transition: var(--transition-fast);
 }
 
-/* --- 2. Layout & Spacing (Breathing Room) --- */
+/* --- 2. Layout & Spacing --- */
 
 .content-container {
     margin-top: 3rem;
@@ -118,44 +103,61 @@ a {
 
 /* --- 3. Component Modernization & Interactivity --- */
 
+/* Define Interactive Hover Effect (Reusable Class) */
+/* You can add .interactive-hover to any element if the automatic styles below don't catch it */
+.interactive-hover {
+    transition: var(--transition-fast);
+}
+
+.interactive-hover:hover {
+    /* Slightly lift and subtly scale the element */
+    transform: translateY(-5px) scale(1.015); 
+    /* Enhance the shadow significantly */
+    box-shadow: var(--shadow-lg) !important; /* Use !important to override potential inline/utility shadows */
+}
+
+/* Apply interactivity automatically to Cards and common Bootstrap shadow utilities */
+/* This assumes that the homepage elements (Intro, Steps, Features, CTA) use .card or .shadow classes */
+.card, 
+.shadow-sm, 
+.shadow, 
+.shadow-lg {
+    /* Apply the transition properties */
+    transition: var(--transition-fast);
+}
+
+.card:hover,
+.shadow-sm:hover,
+.shadow:hover,
+.shadow-lg:hover {
+    /* Apply the transformation and shadow effect */
+    transform: translateY(-5px) scale(1.015);
+    box-shadow: var(--shadow-lg) !important;
+}
+
+
 /* Navbar */
 .navbar {
     padding-top: 1rem;
     padding-bottom: 1rem;
-    /* Background handled by bg-body-tertiary in HTML */
     border-bottom: 1px solid var(--bs-border-color);
 }
 
-
 .navbar-brand {
     font-weight: 700 !important;
-    /* Ensure the brand color uses the dynamic primary color */
     color: var(--bs-primary) !important; 
     font-size: 1.5rem;
 }
 
-/* Cards - Softer, spacious, modern, and INTERACTIVE */
+/* Cards */
 .card {
     border-radius: var(--radius-lg); 
     border: none; 
     box-shadow: var(--shadow-md);
-    /* Smooth transition for hover effects */
-    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, background-color 0.3s;
     margin-bottom: 2rem;
 }
 
-/* ENHANCED INTERACTIVITY: Add a subtle lift and scale effect on hover */
-/* Assuming homepage elements use the card structure or a similar pattern. */
-.card:hover {
-    /* Slightly lift and scale the card for a modern interactive feel */
-    transform: translateY(-4px) scale(1.02); 
-    /* Enhance the shadow */
-    box-shadow: var(--shadow-lg);
-}
-
-
 .card-header {
-    /* Ensure the header background matches the card */
     background-color: transparent; 
     font-weight: 600;
     padding: 1.25rem 1.5rem;
@@ -166,22 +168,22 @@ a {
     padding: 1.5rem;
 }
 
-/* Buttons - Cleaner, interactive */
+/* Buttons */
 .btn {
     border-radius: var(--radius-sm);
     padding: 0.5rem 1.25rem;
     font-weight: 500;
-    transition: var(--transition);
+    transition: var(--transition-fast);
     box-shadow: var(--shadow-sm);
 }
 
 .btn:hover {
-    /* Subtle lift effect on hover */
+    /* Subtle lift effect on hover (less pronounced than cards) */
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
 
-/* Apply the custom primary colors to the buttons */
+/* Button Primary Colors */
 .btn-primary {
     background-color: var(--bs-primary);
     border-color: var(--bs-primary);
@@ -192,13 +194,11 @@ a {
     border-color: var(--color-primary-hover) !important;
 }
 
-/* Ensure button text color is readable in dark mode */
 [data-bs-theme="dark"] .btn-primary,
 [data-bs-theme="dark"] .btn-primary:hover,
 [data-bs-theme="dark"] .btn-primary:active,
 [data-bs-theme="dark"] .btn-primary:focus {
-    /* Dark text on light primary button */
-    color: #1a1d23; 
+    color: #1a1d23; /* Dark text on light primary button */
 }
 
 .btn-outline-primary {
@@ -211,13 +211,8 @@ a {
     border-color: var(--bs-primary);
 }
 
-/* Ensure text color is readable when hovering outline buttons */
-[data-bs-theme="light"] .btn-outline-primary:hover {
-    color: #fff; 
-}
-[data-bs-theme="dark"] .btn-outline-primary:hover {
-    color: #1a1d23; 
-}
+[data-bs-theme="light"] .btn-outline-primary:hover { color: #fff; }
+[data-bs-theme="dark"] .btn-outline-primary:hover { color: #1a1d23; }
 
 /* Alerts */
 .alert {
@@ -226,7 +221,7 @@ a {
     padding: 1.25rem;
 }
 
-/* Forms (Modernizing inputs) */
+/* Forms */
 .form-control, .form-select {
     border-radius: var(--radius-sm);
     padding: 0.75rem 1rem;
@@ -251,9 +246,7 @@ a {
 }
 
 .accordion-button:not(.collapsed) {
-    /* Ensure the active state uses the primary color for text. */
     color: var(--bs-primary);
-    /* Keep the background consistent rather than using the default active color tint */
     background-color: var(--bs-accordion-bg); 
 }
 
@@ -276,11 +269,10 @@ a {
 #theme-toggle {
     background: transparent;
     border: none;
-    /* Use the secondary text color which adapts automatically */
     color: var(--bs-secondary-color);
     font-size: 1.4rem;
     cursor: pointer;
-    transition: var(--transition);
+    transition: var(--transition-fast);
     padding: 0.5rem;
     display: flex;
     align-items: center;
@@ -293,36 +285,31 @@ a {
 }
 
 /* CSS-based Icon Switching */
+[data-bs-theme="light"] .icon-light-mode { display: none; }
+[data-bs-theme="light"] .icon-dark-mode { display: block; }
+[data-bs-theme="dark"] .icon-light-mode { display: block; }
+[data-bs-theme="dark"] .icon-dark-mode { display: none; }
 
-/* Light Mode: Show the Moon icon (to switch to dark) */
-[data-bs-theme="light"] .icon-light-mode {
-    display: none;
-}
-[data-bs-theme="light"] .icon-dark-mode {
-    display: block;
-}
+/* --- 5. Utility Class Overrides for Dark Mode (Aggressive Fixes) --- */
 
-/* Dark Mode: Show the Sun icon (to switch to light) */
-[data-bs-theme="dark"] .icon-light-mode {
-    display: block;
-}
-[data-bs-theme="dark"] .icon-dark-mode {
-    display: none;
-}
-
-/* --- 5. Utility Class Overrides for Dark Mode (Defensive Fixes) --- */
-/* These overrides target hardcoded utility classes that might be present in the HTML of the homepage or quiz */
-
+/* Fix Backgrounds: Target elements likely used for the intro box (bg-light, bg-white) */
 [data-bs-theme="dark"] .bg-white,
 [data-bs-theme="dark"] .bg-light {
-    /* Force elements explicitly set to white/light to use the dark surface color */
+    /* Force the background to the dark surface color */
     background-color: var(--bp-surface-dark) !important;
-    /* CRITICAL FIX: Force the text color INSIDE these elements to be light, ensuring readability for the homepage box. */
+    /* Force the immediate text color of the container */
     color: var(--bs-body-color) !important; 
 }
 
+/* CRITICAL READABILITY FIX: Aggressively target text inside these containers */
+[data-bs-theme="dark"] .bg-white *,
+[data-bs-theme="dark"] .bg-light * {
+    /* Force all descendant elements' text color to be light, ensuring readability even if nested elements have conflicting utility classes. */
+    color: var(--bs-body-color) !important;
+}
+
+/* Fix explicit dark text utilities elsewhere */
 [data-bs-theme="dark"] .text-dark,
 [data-bs-theme="dark"] .text-black {
-    /* Force elements explicitly set to dark text to use the light body color */
     color: var(--bs-body-color) !important;
 }
