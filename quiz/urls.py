@@ -11,6 +11,12 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     path('membership/', views.membership_page, name='membership_page'),
 
+    # --- NEW LEGAL PAGES ---
+    path('terms-and-conditions/', views.terms_page, name='terms_page'),
+    path('privacy-policy/', views.privacy_page, name='privacy_page'),
+    path('cookie-policy/', views.cookie_page, name='cookie_page'),
+    # --- END NEW ---
+
     # Quiz Player flow
     path('quiz/start/', views.start_quiz, name='start_quiz'),
     path('quiz/play/<int:question_index>/', views.quiz_player, name='quiz_player'),
@@ -26,6 +32,5 @@ urlpatterns = [
     # Dashboard actions
     path('dashboard/reset/', views.reset_performance, name='reset_performance'),
     path('quiz/start/incorrect/', views.start_incorrect_quiz, name='start_incorrect_quiz'),
-    # --- NEW URL PATTERN ---
     path('quiz/start/flagged/', views.start_flagged_quiz, name='start_flagged_quiz'),
 ]

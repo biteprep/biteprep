@@ -1,4 +1,4 @@
-# quiz/views.py (DEFINITIVE, CORRECTED, AND COMPLETE VERSION)
+# quiz/views.py
 
 import random
 import stripe
@@ -28,7 +28,7 @@ from .forms import ContactForm
 # ===================================================================
 
 def landing_page(request):
-    return render(request, 'quiz/landing_page.html')
+    return render(request, 'quiz/home.html')
 
 def contact_page(request):
     if request.method == 'POST':
@@ -43,11 +43,27 @@ def contact_page(request):
             form = ContactForm(initial=initial_data)
         else:
             form = ContactForm()
-    return render(request, 'quiz/contact_page.html', {'form': form})
+    return render(request, 'quiz/contact.html', {'form': form})
+
+# --- NEW VIEWS FOR LEGAL PAGES ---
+
+def terms_page(request):
+    """Renders the Terms and Conditions page."""
+    return render(request, 'quiz/terms.html')
+
+def privacy_page(request):
+    """Renders the Privacy Policy page."""
+    return render(request, 'quiz/privacy.html')
+
+def cookie_page(request):
+    """Renders the Cookie Policy page."""
+    return render(request, 'quiz/cookies.html')
+
+# --- END NEW ---
 
 @login_required
 def membership_page(request):
-    return render(request, 'quiz/membership_page.html')
+    return render(request, 'quiz/membership.html')
 
 @login_required
 def dashboard(request):
@@ -60,7 +76,7 @@ def dashboard(request):
     except ZeroDivisionError:
         overall_percentage = 0
     
-    # Chart data logic (RESTORED)
+    # Chart data logic
     thirty_days_ago = timezone.now() - timedelta(days=30)
     recent_answers = UserAnswer.objects.filter(user=request.user, timestamp__gte=thirty_days_ago)
     daily_performance = (
@@ -268,6 +284,7 @@ def quiz_player(request, question_index):
         'flagged_questions': user_flagged_question_ids,
     }
     return render(request, 'quiz/quiz_player.html', context)
+
 @login_required
 def quiz_results(request):
     if 'quiz_context' not in request.session:
@@ -306,7 +323,8 @@ def quiz_results(request):
         'final_score': final_score, 'total_questions': total_questions,
         'percentage_score': round(percentage_score, 2), 'review_data': review_data
     }
-    return render(request, 'quiz/quiz_review.html', context)
+    return render(request, 'quiz/results.html', context)
+
 @login_required
 @csrf_exempt
 def report_question(request):
@@ -325,16 +343,21 @@ def report_question(request):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
+
 @login_required
 def create_checkout_session(request):
     pass
+
 def success_page(request):
     pass
+
 def cancel_page(request):
     pass
+
 @csrf_exempt
 def stripe_webhook(request):
     return HttpResponse(status=200)
+
 @login_required
 def start_incorrect_quiz(request):
     incorrect_question_ids = list(UserAnswer.objects.filter(user=request.user, is_correct=False).values_list('question_id', flat=True))
@@ -348,6 +371,7 @@ def start_incorrect_quiz(request):
     }
     request.session['quiz_context'] = quiz_context
     return redirect('start_quiz')
+
 @login_required
 def start_flagged_quiz(request):
     flagged_question_ids = list(FlaggedQuestion.objects.filter(user=request.user).values_list('question_id', flat=True))

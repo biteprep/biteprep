@@ -1,5 +1,4 @@
 {% load static %}
-<!-- Set the data-bs-theme attribute right away -->
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="light">
 <head>
@@ -19,7 +18,6 @@
     
     {% block head_styles %}{% endblock %}
 
-    <!-- Theme Initialization Script (Run early to prevent Flash of Incorrect Theme) -->
     <script>
         (function() {
             // 1. Check localStorage
@@ -39,10 +37,8 @@
 
 </head>
 <body>
-    <!-- bg-body-tertiary allows the navbar to adapt automatically -->
     <nav class="navbar navbar-expand-lg shadow-sm bg-body-tertiary">
         <div class="container-fluid">
-            <!-- Brand styling handled in custom.css -->
             <a class="navbar-brand" href="{% url 'home' %}">🦷 BitePrep</a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -52,9 +48,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <div class="ms-auto d-flex align-items-center">
 
-                    <!-- Theme Toggle Button -->
-                    <button id="theme-toggle" class="me-3" aria-label="Toggle theme" title="Toggle theme">
-                        <!-- Icons are shown/hidden via CSS based on the data-bs-theme attribute -->
+                    <button id="theme-toggle" class="btn btn-outline-secondary me-3" aria-label="Toggle theme" title="Toggle theme">
                         <i class="bi bi-moon-stars-fill icon-dark-mode"></i>
                         <i class="bi bi-sun-fill icon-light-mode"></i>
                     </button>
@@ -81,8 +75,7 @@
     
     <div class="container-fluid">
         {% if messages %}
-             <!-- Centering alerts and adding top margin for better spacing -->
-            <div class="row justify-content-center mt-4">
+             <div class="row justify-content-center mt-4">
                 <div class="col-md-10 col-lg-8">
                     {% for message in messages %}
                     <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
@@ -99,9 +92,18 @@
         {% block content %}{% endblock %}
     </main>
 
+    <footer class="footer mt-auto py-3 bg-body-tertiary border-top">
+        <div class="container text-center">
+            <span class="text-muted">© {% now "Y" %} BitePrep. All Rights Reserved.</span>
+            <ul class="list-inline d-inline-block ms-3">
+                <li class="list-inline-item"><a href="{% url 'terms_page' %}">Terms</a></li>
+                <li class="list-inline-item"><a href="{% url 'privacy_page' %}">Privacy</a></li>
+                <li class="list-inline-item"><a href="{% url 'cookie_page' %}">Cookies</a></li>
+            </ul>
+        </div>
+    </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     
-    <!-- Theme Toggle Logic -->
     <script>
         document.addEventListener('DOMContentLoaded', (event) => {
             const toggleButton = document.getElementById('theme-toggle');
