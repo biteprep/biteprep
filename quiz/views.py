@@ -29,7 +29,9 @@ except ImportError:
     class Profile:
         membership = 'Free'
         membership_expiry_date = None
-        DoesNotExist = Exception # Mock DoesNotExist for exception handling if Profile is dummy
+        # Define a mock DoesNotExist exception specific to this dummy class
+        class DoesNotExist(Exception):
+            pass
 
 try:
     from .forms import ContactForm
@@ -52,15 +54,18 @@ def contact_page(request):
     # Placeholder implementation
     return HttpResponse("Contact Page Placeholder. Replace with actual implementation.")
 
-# FIX for the latest deployment error: Added missing terms_page
 def terms_page(request):
     # Placeholder implementation
     return HttpResponse("Terms and Conditions Placeholder. Replace with actual implementation.")
 
-# Anticipating privacy_page might also be needed.
 def privacy_page(request):
     # Placeholder implementation
     return HttpResponse("Privacy Policy Placeholder. Replace with actual implementation.")
+
+# FIX for the latest deployment error: Added missing cookie_page
+def cookie_page(request):
+    # Placeholder implementation
+    return HttpResponse("Cookie Policy Placeholder. Replace with actual implementation.")
 
 @login_required
 def dashboard(request):
@@ -129,13 +134,22 @@ def quiz_setup(request):
     if request.method == 'POST':
         # Ensure Profile is accessed correctly and safely
         try:
+            # Check if the user object itself has the profile related name
+            if not hasattr(request.user, 'profile'):
+                raise Profile.DoesNotExist("Profile does not exist for user.")
             profile = request.user.profile
+            
         except (AttributeError, Profile.DoesNotExist):
             # Handle cases where the user might not have a profile object yet
-            messages.error(request, "User profile not found. Cannot start quiz.")
+            messages.error(request, "User profile not found or configured incorrectly. Cannot start quiz.")
             return redirect('dashboard')
 
-        if not (profile.membership == 'Free' or (profile.membership_expiry_date and profile.membership_expiry_date >= date.today())):
+        # Check subscription status
+        today = date.today()
+        # Handle potential None value for membership_expiry_date
+        is_active_subscription = profile.membership_expiry_date and profile.membership_expiry_date >= today
+        
+        if not (profile.membership == 'Free' or is_active_subscription):
             messages.warning(request, "Your subscription has expired. Please renew your plan to continue.")
             return redirect('membership_page')
         
@@ -147,6 +161,7 @@ def quiz_setup(request):
         question_filter = request.POST.get('question_filter', 'all')
         questions = Question.objects.filter(subtopic__id__in=selected_subtopic_ids)
         
+        # Apply filters
         if question_filter == 'unanswered':
             answered_question_ids = UserAnswer.objects.filter(user=request.user).values_list('question_id', flat=True)
             questions = questions.exclude(id__in=answered_question_ids)
@@ -156,14 +171,22 @@ def quiz_setup(request):
             questions = questions.filter(id__in=UserAnswer.objects.filter(user=request.user, is_correct=False).values_list('question_id', flat=True))
             
         question_ids = list(questions.values_list('id', flat=True))
+        
+        if not question_ids:
+             # If filtering resulted in no questions, stop here.
+            messages.info(request, "No questions found for your selected topics and filters.")
+            return redirect('quiz_setup')
+
         random.shuffle(question_ids)
         
         question_count_type = request.POST.get('question_count_type', 'all')
         
+        # Apply limits
         FREE_TIER_LIMIT = 10
+        original_count = len(question_ids)
+
         if profile.membership == 'Free':
-            # Check length before slicing to ensure the message is accurate if they have exactly the limit or more
-            if len(question_ids) >= FREE_TIER_LIMIT:
+            if original_count >= FREE_TIER_LIMIT:
                  messages.info(request, f"As a free user, your quiz is limited to {FREE_TIER_LIMIT} questions.")
             question_ids = question_ids[:FREE_TIER_LIMIT]
 
@@ -177,22 +200,18 @@ def quiz_setup(request):
 
         # Bug #3 Fix: Enforce a hard limit to prevent session data issues.
         if len(question_ids) > MAX_QUESTIONS_PER_QUIZ:
-            # Only show this message if the Free tier limit wasn't the primary reason for truncation
-            # We check if they are not 'Free' OR if the count was actually larger than the free limit before truncation.
-            if profile.membership != 'Free' or len(question_ids) > FREE_TIER_LIMIT:
+            # Notify the user if their quiz was truncated by the stability limit, provided they aren't on the free tier (where they are already notified)
+            if profile.membership != 'Free':
                  messages.warning(request, f"To ensure stability, the quiz has been limited to the maximum of {MAX_QUESTIONS_PER_QUIZ} questions.")
             question_ids = question_ids[:MAX_QUESTIONS_PER_QUIZ]
 
-
-        if not question_ids:
-            messages.info(request, "No questions found for your selected topics and filters.")
-            return redirect('quiz_setup')
             
         quiz_context = {
             'question_ids': question_ids, 'total_questions': len(question_ids),
             'mode': request.POST.get('quiz_mode', 'quiz'), 'user_answers': {},
         }
         
+        # Timer configuration
         if 'timer-toggle' in request.POST:
             try:
                 timer_minutes = int(request.POST.get('timer_minutes', 0))
@@ -230,7 +249,9 @@ def quiz_player(request, question_index):
     question_ids = quiz_context.get('question_ids', [])
     quiz_mode = quiz_context.get('mode', 'quiz')
     
+    # Validate the index
     if not (0 < question_index <= len(question_ids)):
+        # If the index is out of bounds (e.g., user manually changes URL), redirect to results
         return redirect('quiz_results')
         
     question_id = question_ids[question_index - 1]
@@ -255,31 +276,44 @@ def quiz_player(request, question_index):
         # Save the selection if provided
         if submitted_answer_id_str:
             try:
-                answer_obj = Answer.objects.get(id=int(submitted_answer_id_str))
+                # Convert to int immediately to catch non-numeric IDs
+                submitted_answer_id = int(submitted_answer_id_str)
+                answer_obj = Answer.objects.get(id=submitted_answer_id)
                 
-                # Optional: Validate that the answer belongs to the question
+                # Validate that the answer belongs to the question
                 if answer_obj.question_id != question_id:
-                     raise ValueError("Answer does not match question.")
-
-                # Save the selection and the submission status
-                quiz_context['user_answers'][str(question_id)] = { 
-                    'answer_id': answer_obj.id, 
-                    'is_correct': answer_obj.is_correct,
-                    'is_submitted': is_submitted # Bug #2: Track submission state
-                }
+                     # Log this attempt if necessary; do not update session with invalid data
+                     pass 
+                else:
+                    # Save the selection and the submission status
+                    quiz_context['user_answers'][str(question_id)] = { 
+                        'answer_id': answer_obj.id, 
+                        'is_correct': answer_obj.is_correct,
+                        'is_submitted': is_submitted # Bug #2: Track submission state
+                    }
             except (Answer.DoesNotExist, ValueError):
+                # Handle invalid or non-existent answer IDs
                 pass
         
-        # Handle the case where 'submit_answer' was clicked but perhaps no answer was selected yet
+        # Handle the case where 'submit_answer' was clicked but perhaps no answer was selected yet or validation failed
         if is_submitted:
-            # Ensure that if it's submitted, the status is recorded even if no selection was made or if the selection failed validation
-            if str(question_id) not in quiz_context['user_answers']:
-                quiz_context['user_answers'][str(question_id)] = {
+            # Ensure that if it's submitted, the status is recorded even if no valid selection was made
+            # We check if the entry is missing OR if a previous entry exists but has no answer_id (e.g. previously submitted empty)
+            current_answer_data = quiz_context['user_answers'].get(str(question_id))
+            
+            if not current_answer_data:
+                 # If we are submitting, and there's no record yet, mark it as submitted but incorrect (assuming no valid answer was selected).
+                 quiz_context['user_answers'][str(question_id)] = {
                     'answer_id': None,
-                    'is_correct': False, # No answer selected is considered incorrect
+                    'is_correct': False, 
                     'is_submitted': True
                 }
+            elif current_answer_data:
+                # If there is data (a valid answer was selected or it was previously submitted empty), ensure its is_submitted status is updated to True
+                current_answer_data['is_submitted'] = True
 
+
+        # Handle Flagging
         if action == 'toggle_flag':
             flag, created = FlaggedQuestion.objects.get_or_create(user=request.user, question_id=question_id)
             if not created:
@@ -310,10 +344,11 @@ def quiz_player(request, question_index):
 
     # --- Rendering Logic (GET or non-redirected POST) ---
     
-    try:        
+    try:
+        # Fetch the question and related data efficiently        
         question = Question.objects.select_related('subtopic__topic').prefetch_related('answers').get(pk=question_id)
     except Question.DoesNotExist:
-        messages.error(request, f"Question ID {question_id} not found. Returning to setup.")
+        messages.error(request, f"Question ID {question_id} not found. Ending quiz.")
         # Clean up session if the quiz is corrupted
         if 'quiz_context' in request.session:
             del request.session['quiz_context']
@@ -328,6 +363,8 @@ def quiz_player(request, question_index):
             duration = timedelta(seconds=quiz_context.get('duration_seconds', 0))
             time_passed = timezone.now() - start_time
             seconds_remaining = max(0, int((duration - time_passed).total_seconds()))
+            
+            # Auto-submit logic for Test Mode
             if seconds_remaining <= 0 and quiz_mode == 'test':
                 messages.info(request, "Time is up! The quiz has been automatically submitted.")
                 return redirect('quiz_results')
@@ -335,7 +372,9 @@ def quiz_player(request, question_index):
             # Handle potential ISO format errors or type errors if session data is corrupted
             pass
             
-    user_flagged_question_ids = list(FlaggedQuestion.objects.filter(user=request.user).values_list('question_id', flat=True))
+    # Optimization: Filter flagged questions to only those in the current quiz session
+    user_flagged_question_ids = list(FlaggedQuestion.objects.filter(user=request.user, question_id__in=question_ids).values_list('question_id', flat=True))
+    
     navigator_items = []
     user_answers = quiz_context.get('user_answers', {})
     
@@ -347,7 +386,7 @@ def quiz_player(request, question_index):
         
         if answer_info:
             if quiz_mode == 'test':
-                 # In test mode, just show it is answered (using success as the original code intended)
+                 # In test mode, just show it is answered (using success color as placeholder)
                  button_class = 'btn-success'
             elif quiz_mode == 'quiz':
                 # In quiz mode, show correctness only if submitted (Bug #2)
@@ -374,15 +413,17 @@ def quiz_player(request, question_index):
     user_selected_answer_id = user_answer_info.get('answer_id') if user_answer_info else None
     
     user_answer_obj = None
+    # We only need the user_answer_obj if we are in feedback mode and an answer was selected
     if is_feedback_mode and user_selected_answer_id:
-        try:
-            # Optimization: Try to get the answer from the prefetched list first
-            user_answer_obj = next((a for a in question.answers.all() if a.id == user_selected_answer_id), None)
-            if not user_answer_obj:
-                 # Fallback to DB query if not found in prefetch (should be rare)
+        # Optimization: Try to get the answer from the prefetched list first
+        user_answer_obj = next((a for a in question.answers.all() if a.id == user_selected_answer_id), None)
+        
+        # Fallback is generally not needed if prefetch worked, but kept for safety
+        if not user_answer_obj:
+            try:
                  user_answer_obj = Answer.objects.get(id=user_selected_answer_id)
-        except Answer.DoesNotExist:
-            pass
+            except Answer.DoesNotExist:
+                pass
             
     context = {
         'question': question, 'question_index': question_index, 'total_questions': len(question_ids),
