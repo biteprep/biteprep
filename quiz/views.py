@@ -28,7 +28,6 @@ from .forms import ContactForm
 # ===================================================================
 
 def landing_page(request):
-    # Corrected to point to the actual template file
     return render(request, 'quiz/landing_page.html')
 
 def contact_page(request):
@@ -44,7 +43,6 @@ def contact_page(request):
             form = ContactForm(initial=initial_data)
         else:
             form = ContactForm()
-    # Corrected to point to the actual template file 'contact.html'
     return render(request, 'quiz/contact.html', {'form': form})
 
 def terms_page(request):
@@ -65,7 +63,6 @@ def membership_page(request):
 
 @login_required
 def dashboard(request):
-    # Overall stats
     user_answers = UserAnswer.objects.filter(user=request.user)
     total_answered = user_answers.count()
     correct_answered = user_answers.filter(is_correct=True).count()
@@ -74,7 +71,6 @@ def dashboard(request):
     except ZeroDivisionError:
         overall_percentage = 0
     
-    # Chart data logic
     thirty_days_ago = timezone.now() - timedelta(days=30)
     recent_answers = UserAnswer.objects.filter(user=request.user, timestamp__gte=thirty_days_ago)
     daily_performance = (
@@ -91,7 +87,6 @@ def dashboard(request):
             daily_accuracy = 0
         chart_data.append(round(daily_accuracy))
 
-    # Granular topic breakdown logic
     subtopic_performance = (
         UserAnswer.objects.filter(user=request.user)
         .values('question__subtopic__topic__id', 'question__subtopic__topic__name', 'question__subtopic__id', 'question__subtopic__name')
@@ -117,7 +112,6 @@ def dashboard(request):
             topic_percentage = 0
         data['percentage'] = round(topic_percentage, 1)
     
-    # Actionable review panel logic
     incorrect_questions_count = user_answers.filter(is_correct=False).count()
     flagged_questions_count = FlaggedQuestion.objects.filter(user=request.user).count()
         

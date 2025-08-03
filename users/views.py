@@ -7,7 +7,6 @@ from django.contrib import messages
 from django.conf import settings
 import stripe
 
-# This now imports the corrected form
 from .forms import CustomUserCreationForm
 
 def signup(request):
@@ -20,15 +19,16 @@ def signup(request):
     else:
         form = CustomUserCreationForm()
     
-    # This line has been corrected to point to the 'registration' folder.
-    return render(request, 'registration/signup.html', {'form': form})
+    # Corrected path to match your template folder structure
+    return render(request, 'users/signup.html', {'form': form})
 
 @login_required
 def signup_success(request):
     """
     Displays a success page after signup before redirecting.
     """
-    return render(request, 'registration/signup_success.html')
+    # Corrected path to match your template file name
+    return render(request, 'users/signup_complete.html')
 
 def logout_view(request):
     logout(request)
@@ -37,7 +37,8 @@ def logout_view(request):
 
 @login_required
 def account_page(request):
-    return render(request, 'registration/account_page.html')
+    # Corrected path to match your template folder structure
+    return render(request, 'users/account.html')
 
 @login_required
 def delete_account(request):
