@@ -28,6 +28,8 @@ from .forms import ContactForm
 # ===================================================================
 
 def landing_page(request):
+    # This line is added temporarily for testing the error logging.
+    assert False, "This is a test to see if tracebacks appear in the Render logs."
     return render(request, 'quiz/home.html')
 
 def contact_page(request):
@@ -45,8 +47,6 @@ def contact_page(request):
             form = ContactForm()
     return render(request, 'quiz/contact.html', {'form': form})
 
-# --- NEW VIEWS FOR LEGAL PAGES ---
-
 def terms_page(request):
     """Renders the Terms and Conditions page."""
     return render(request, 'quiz/terms.html')
@@ -58,8 +58,6 @@ def privacy_page(request):
 def cookie_page(request):
     """Renders the Cookie Policy page."""
     return render(request, 'quiz/cookies.html')
-
-# --- END NEW ---
 
 @login_required
 def membership_page(request):
