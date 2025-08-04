@@ -12,7 +12,7 @@ import django_otp.plugins.otp_totp.admin
 
 # C. Security (2FA): Replace the default admin site class with the OTP-enforced one.
 # This enforces 2FA for all staff users accessing the admin panel.
-#admin.site.__class__ = OTPAdminSite#
+admin.site.__class__ = OTPAdminSite
 
 # C. Security (Obscure URL): Define the secret admin path.
 # !!! IMPORTANT: Change 'manage-biteprep-secure-access' to your own unique, secret path !!!
