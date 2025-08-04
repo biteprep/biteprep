@@ -17,10 +17,7 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 
 INSTALLED_APPS = [
-    'quiz.apps.QuizConfig',
-    'users.apps.UsersConfig',
-    'crispy_forms',
-    'crispy_bootstrap5',
+    # Django defaults (Reordered slightly for clarity)
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -28,6 +25,21 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
+
+    # Security: 2FA (django-otp)
+    'django_otp',
+    'django_otp.plugins.otp_totp', # For Google Authenticator/Authy
+    
+    # Security: Honeypot
+    'admin_honeypot',
+
+    # Project Apps
+    'quiz.apps.QuizConfig',
+    'users.apps.UsersConfig',
+    
+    # Third-party UI
+    'crispy_forms',
+    'crispy_bootstrap5',
 ]
 
 MIDDLEWARE = [
@@ -36,7 +48,13 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    
+    # Authentication must come first
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    
+    # Security: 2FA Middleware (Must be immediately after AuthenticationMiddleware)
+    'django_otp.middleware.OTPMiddleware',
+    
     'users.middleware.EnsureProfileMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -108,4 +126,3 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = True
     # This line tells Django to trust POST requests from your live site's URL
     CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
-    # Triggering a test deployment on [current date].
