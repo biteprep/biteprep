@@ -3,8 +3,14 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
+from django.utils.text import Truncator # Import Truncator for the fix
 # Ensure FlaggedQuestion is imported
 from .models import Category, Topic, Subtopic, Question, Answer, UserAnswer, QuestionReport, ContactInquiry, FlaggedQuestion
+
+# Import for History/Audit Log
+from simple_history.admin import SimpleHistoryAdmin
+# Import for Date Range Filter
+from rangefilter.filters import DateTimeRangeFilter
 
 # --- Helper Function for Clickable Links (A. Functionality) ---
 def get_admin_link(obj, display_text=None):
@@ -30,8 +36,9 @@ class AnswerInline(admin.TabularInline):
     model = Answer
     extra = 1 # Reduced extra slots from 3 to 1 for a cleaner interface
 
+# Inherit from SimpleHistoryAdmin
 @admin.register(Question)
-class QuestionAdmin(admin.ModelAdmin):
+class QuestionAdmin(SimpleHistoryAdmin):
     fieldsets = [
         ('Question Information', {'fields': ['subtopic', 'question_text', 'question_image']}),
         ('Explanation', {'fields': ['explanation']}),
@@ -42,36 +49,32 @@ class QuestionAdmin(admin.ModelAdmin):
     list_display = ('question_text_short', 'subtopic', 'get_topic', 'get_category')
     
     # A. Functionality: Add hierarchical filters
-    # This allows filtering by Category, then Topic, then Subtopic
     list_filter = ['subtopic__topic__category', 'subtopic__topic', 'subtopic']
     search_fields = ['question_text', 'explanation']
     
     # B. Performance: Optimize queries by selecting related fields up to Category
-    # This single definition covers subtopic, topic, and category joins efficiently.
     list_select_related = ('subtopic__topic__category',)
 
     def question_text_short(self, obj):
-        # Uses the model's __str__ method which already truncates the text
         return str(obj)
     question_text_short.short_description = 'Question Text'
 
     def get_topic(self, obj):
-        # Safe access due to list_select_related
         return obj.subtopic.topic.name
     get_topic.short_description = 'Topic'
-    get_topic.admin_order_field = 'subtopic__topic__name' # Enables sorting by topic name
+    get_topic.admin_order_field = 'subtopic__topic__name'
 
     def get_category(self, obj):
-        # Safe access due to list_select_related
         return obj.subtopic.topic.category.name
     get_category.short_description = 'Category'
-    get_category.admin_order_field = 'subtopic__topic__category__name' # Enables sorting by category name
+    get_category.admin_order_field = 'subtopic__topic__category__name'
 
 @admin.register(UserAnswer)
-class UserAnswerAdmin(admin.ModelAdmin):
+class UserAnswerAdmin(admin.ModelAdmin): # History not typically needed on this transactional model
     # A. Functionality: Use clickable links
     list_display = ('user_link', 'question_link', 'is_correct', 'timestamp')
-    list_filter = ('is_correct', 'timestamp')
+    # ENHANCEMENT: Add Date Range Filter
+    list_filter = ('is_correct', ('timestamp', DateTimeRangeFilter))
     # Prevent editing of answers via admin for data integrity
     readonly_fields = ('user', 'question', 'is_correct', 'timestamp') 
     search_fields = ('user__username', 'question__question_text')
@@ -89,11 +92,12 @@ class UserAnswerAdmin(admin.ModelAdmin):
 
 
 @admin.register(QuestionReport)
-# THIS LINE IS NOW CORRECTED (Was already corrected in the prompt, ensuring it stays)
-class QuestionReportAdmin(admin.ModelAdmin):
-    # A. Functionality: Make Question and User clickable links
-    list_display = ('question_link', 'user_link', 'status', 'reported_at')
-    list_filter = ('status',)
+# Inherit from SimpleHistoryAdmin
+class QuestionReportAdmin(SimpleHistoryAdmin):
+    # FIX: Added 'get_reason_short' to list_display
+    list_display = ('question_link', 'user_link', 'get_reason_short', 'status', 'reported_at')
+    # ENHANCEMENT: Add Date Range Filter
+    list_filter = ('status', ('reported_at', DateTimeRangeFilter))
     search_fields = ('question__question_text', 'user__username', 'reason')
     # Keep these readonly in the edit view (including reason)
     readonly_fields = ('question', 'user', 'reported_at', 'reason') 
@@ -101,6 +105,11 @@ class QuestionReportAdmin(admin.ModelAdmin):
     
     # B. Performance
     list_select_related = ('user', 'question')
+
+    # FIX: Method to display truncated reason using Django Truncator
+    def get_reason_short(self, obj):
+        return Truncator(obj.reason).chars(100)
+    get_reason_short.short_description = 'Reason Summary'
 
     def user_link(self, obj):
         return get_admin_link(obj.user)
@@ -113,33 +122,32 @@ class QuestionReportAdmin(admin.ModelAdmin):
 
 
 @admin.register(ContactInquiry)
-class ContactInquiryAdmin(admin.ModelAdmin):
+# Inherit from SimpleHistoryAdmin
+class ContactInquiryAdmin(SimpleHistoryAdmin):
     list_display = ('subject', 'name', 'email', 'status', 'submitted_at')
-    list_filter = ('status',)
+    # ENHANCEMENT: Add Date Range Filter
+    list_filter = ('status', ('submitted_at', DateTimeRangeFilter))
     search_fields = ('name', 'email', 'subject', 'message')
     readonly_fields = ('name', 'email', 'subject', 'message', 'submitted_at')
     list_editable = ('status',)
 
 # Register standard models (using decorators for consistency and enhancements)
-# We remove the previous admin.site.register calls as we now use decorators.
 
 @admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
+class CategoryAdmin(SimpleHistoryAdmin):
     search_fields = ('name',)
 
 @admin.register(Topic)
-class TopicAdmin(admin.ModelAdmin):
+class TopicAdmin(SimpleHistoryAdmin):
     list_display = ('name', 'category')
     list_filter = ('category',)
-    # B. Performance
     list_select_related = ('category',)
     search_fields = ('name', 'category__name')
 
 @admin.register(Subtopic)
-class SubtopicAdmin(admin.ModelAdmin):
+class SubtopicAdmin(SimpleHistoryAdmin):
     list_display = ('name', 'topic', 'get_category')
     list_filter = ('topic__category', 'topic')
-    # B. Performance (Optimize up to the category level)
     list_select_related = ('topic__category',)
     search_fields = ('name', 'topic__name')
 
@@ -149,14 +157,15 @@ class SubtopicAdmin(admin.ModelAdmin):
     get_category.admin_order_field = 'topic__category__name'
 
 
-# Register FlaggedQuestion for visibility (Optional but useful)
+# Register FlaggedQuestion for visibility
 @admin.register(FlaggedQuestion)
 class FlaggedQuestionAdmin(admin.ModelAdmin):
     list_display = ('user_link', 'question_link', 'timestamp')
-    # B. Performance
     list_select_related = ('user', 'question')
     search_fields = ('user__username', 'question__question_text')
     readonly_fields = ('user', 'question', 'timestamp')
+    # ENHANCEMENT: Add Date Range Filter
+    list_filter = (('timestamp', DateTimeRangeFilter),)
 
     def user_link(self, obj):
         return get_admin_link(obj.user)

@@ -17,7 +17,11 @@ stripe==12.3.0
 typing_extensions==4.14.1
 urllib3==2.5.0
 whitenoise==6.9.0
-# New Security Packages (Corrected)
+# Security Packages
 django-otp>=1.1.0
 django-admin-honeypot1>=1.2.0
 qrcode>=7.3.0
+# New Admin Enhancements
+django-simple-history>=3.0.0
+django-impersonate>=1.7.0
+django-admin-rangefilter>=0.10.0

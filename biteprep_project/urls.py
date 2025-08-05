@@ -15,7 +15,7 @@ import django_otp.plugins.otp_totp.admin
 admin.site.__class__ = OTPAdminSite
 
 # C. Security (Obscure URL): Define the secret admin path.
-# !!! IMPORTANT: Change 'manage-biteprep-secure-access' to your own unique, secret path !!!
+# !!! IMPORTANT: Ensure this is your unique, secret path !!!
 SECRET_ADMIN_PATH = 'manage-biteprep-secure-access/' 
 
 urlpatterns = [
@@ -24,6 +24,9 @@ urlpatterns = [
 
     # C. Security (Obscure URL): The REAL, secret admin login page (OTP Protected).
     path(SECRET_ADMIN_PATH, admin.site.urls),
+
+    # Impersonation URLs
+    path('impersonate/', include('impersonate.urls')),
     
     # All user-related URLs will be under /accounts/
     path('accounts/', include('users.urls')),

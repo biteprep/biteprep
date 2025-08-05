@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+# Import HistoricalRecords
+from simple_history.models import HistoricalRecords
 
 class Profile(models.Model):
     # The one-to-one link to the built-in User model
@@ -20,6 +22,9 @@ class Profile(models.Model):
 
     # Field to store the Stripe Customer ID, linked to their subscription
     stripe_customer_id = models.CharField(max_length=255, blank=True, null=True)
+
+    # Add History Tracking
+    history = HistoricalRecords()
 
     # This makes the object display nicely in the admin panel
     def __str__(self):

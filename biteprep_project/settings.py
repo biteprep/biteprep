@@ -1,5 +1,3 @@
-# biteprep_project/settings.py
-
 from pathlib import Path
 import os
 import dj_database_url
@@ -33,6 +31,11 @@ INSTALLED_APPS = [
     # Security: Honeypot
     'admin_honeypot',
 
+    # Admin Enhancements
+    'simple_history',           # Added for Audit History
+    'impersonate',              # Added for User Impersonation
+    'rangefilter',              # Added for Date Range Filters
+
     # Project Apps
     'quiz.apps.QuizConfig',
     'users.apps.UsersConfig',
@@ -54,6 +57,10 @@ MIDDLEWARE = [
     
     # Security: 2FA Middleware (Must be immediately after AuthenticationMiddleware)
     'django_otp.middleware.OTPMiddleware',
+
+    # Admin Enhancements Middleware
+    'impersonate.middleware.ImpersonateMiddleware',       # Added for User Impersonation
+    'simple_history.middleware.HistoryRequestMiddleware', # Added for Audit History
     
     'users.middleware.EnsureProfileMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -61,6 +68,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'biteprep_project.urls'
+
+# ... (Keep TEMPLATES, WSGI_APPLICATION, DATABASES, AUTH_PASSWORD_VALIDATORS, etc. the same) ...
 
 TEMPLATES = [
     {
