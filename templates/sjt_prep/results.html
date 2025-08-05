@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}SJT Mock Exam Results{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <h2>SJT Mock Exam Results</h2>
+        
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Overall Score</h5>
+                <div class="progress" style="height: 30px;">
+                  <div class="progress-bar bg-success" role="progressbar" style="width: {{ percentage }}%;" aria-valuenow="{{ percentage }}" aria-valuemin="0" aria-valuemax="100">
+                    {{ percentage }}%
+                  </div>
+                </div>
+                <p class="mt-2">You scored <strong>{{ total_score }}</strong> out of a possible <strong>{{ max_possible_score }}</strong> points.</p>
+                <p><small>Note: Pilot questions are displayed below but are excluded from the total score calculation.</small></p>
+                <a href="{% url 'dashboard' %}" class="btn btn-primary">Return to Dashboard</a>
+                <a href="{% url 'sjt_prep:sjt_setup' %}" class="btn btn-outline-secondary">Start New SJT Exam</a>
+            </div>
+        </div>
+
+        <h3>Detailed Breakdown</h3>
+        
+        {% for detail in results_details %}
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center bg-body-tertiary">
+                <span>Question {{ detail.index }} ({{ detail.type|title }})</span>
+                <span>
+                    {% if detail.is_pilot %}
+                        <span class="badge bg-secondary">Pilot (Unscored)</span>
+                    {% else %}
+                        Score: <strong class="text-primary">{{ detail.score }} / {{ detail.max_score }}</strong>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="card-body">
+                <p><strong>Scenario:</strong></p>
+                <p>{{ detail.scenario|linebreaksbr }}</p>
+                
+                <hr>
+                
+                {% if detail.type == 'ranking' %}
+                    <h5>Your Ranking vs Correct Ranking</h5>
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Action</th>
+                                <th>Your Rank</th>
+                                <th>Correct Rank</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {# Actions are pre-sorted by correct rank in the view logic #}
+                            {% for action in detail.actions %}
+                            <tr class="{% if action.user_rank == action.correct_rank %}table-success{% elif action.user_rank == 'Not Ranked' %}table-warning{% endif %}">
+                                <td>{{ action.text }}</td>
+                                <td>{{ action.user_rank }}</td>
+                                <td>{{ action.correct_rank }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                {% elif detail.type == 'mcq' %}
+                    <h5>Your Selections (Best 3)</h5>
+                    <ul class="list-group">
+                        {% for action in detail.actions %}
+                        <li class="list-group-item {% if action.is_correct %}list-group-item-success{% endif %}">
+                            {{ action.text }}
+                            <span class="float-end">
+                                {% if action.user_selected %}
+                                    <span class="badge bg-primary me-1">Your Selection</span>
+                                {% endif %}
+                                {% if action.is_correct %}
+                                    <span class="badge bg-success">Correct Option</span>
+                                {% endif %}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {# Display warning if score is 0 due to invalid number of selections #}
+                    {% if detail.score == 0 and not detail.is_pilot %}
+                         {# Check if the user selected more than the required number #}
+                        {% if detail.actions|length > 3 %}
+                             <div class="alert alert-warning mt-2">You scored 0. You must select 3 or fewer options to score points.</div>
+                        {% endif %}
+                    {% endif %}
+
+                {% endif %}
+
+                <div class="alert alert-info mt-3">
+                    <strong>Rationale:</strong>
+                    <p>{{ detail.rationale|linebreaksbr }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+    </div>
+</div>
+{% endblock %}
