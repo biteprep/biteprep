@@ -19,12 +19,10 @@ def signup(request):
             return redirect('signup_success')
     else:
         form = CustomUserCreationForm()
-    # Path is now correct for the unified templates folder
     return render(request, 'registration/signup.html', {'form': form})
 
 @login_required
 def signup_success(request):
-    # Path and filename are now correct
     return render(request, 'users/signup_success.html')
 
 def logout_view(request):
@@ -34,7 +32,6 @@ def logout_view(request):
 
 @login_required
 def account_page(request):
-    # Path and filename are now correct for the unified folder
     return render(request, 'users/account_page.html')
 
 @login_required

@@ -3,15 +3,12 @@
 import random
 import stripe
 import json
-import os
 from datetime import date, datetime, timedelta
-import traceback
 
 from django.shortcuts import render, redirect, HttpResponse
 from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.db.models.functions import TruncDate
@@ -19,14 +16,11 @@ from django.contrib import messages
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Category, Question, Answer, UserAnswer, QuestionReport, ContactInquiry, Topic, FlaggedQuestion
-from users.models import Profile
+# CORRECTED: Added QuestionReport to the import list
+from .models import Category, Question, Answer, UserAnswer, FlaggedQuestion, QuestionReport
 from .forms import ContactForm
 
-# A constant for maximum quiz size to prevent session overflow
 MAX_QUESTIONS_PER_QUIZ = 500
-
-# --- Standard Page Views ---
 
 def landing_page(request):
     return render(request, 'quiz/landing_page.html')
@@ -60,7 +54,6 @@ def membership_page(request):
 
 @login_required
 def dashboard(request):
-    # ... (dashboard logic remains the same) ...
     user_answers = UserAnswer.objects.filter(user=request.user)
     total_answered = user_answers.count()
     correct_answered = user_answers.filter(is_correct=True).count()
@@ -99,12 +92,8 @@ def dashboard(request):
     }
     return render(request, 'quiz/dashboard.html', context)
 
-
-# --- Core Quiz Views ---
-
 @login_required
 def quiz_setup(request):
-    # ... (quiz_setup logic remains the same) ...
     if request.method == 'POST':
         profile = request.user.profile
         is_active_subscription = profile.membership_expiry_date and profile.membership_expiry_date >= date.today()
@@ -169,7 +158,6 @@ def start_quiz(request):
 
 @login_required
 def quiz_player(request, question_index):
-    # ... (quiz_player logic remains the same) ...
     quiz_context = request.session.get('quiz_context')
     if not quiz_context:
         messages.error(request, "Quiz session not found. Please start a new quiz.")
@@ -262,7 +250,6 @@ def quiz_player(request, question_index):
 
 @login_required
 def quiz_results(request):
-    # ... (quiz_results logic remains the same) ...
     quiz_context = request.session.pop('quiz_context', None)
     if not quiz_context: return redirect('home')
     user_answers_dict = quiz_context.get('user_answers', {})
@@ -288,7 +275,6 @@ def quiz_results(request):
     context = {'final_score': final_score, 'total_questions': total_questions, 'percentage_score': round(percentage_score, 2), 'review_data': review_data}
     return render(request, 'quiz/results.html', context)
 
-# --- Other Views ---
 @login_required
 def reset_performance(request):
     if request.method == 'POST':
@@ -330,7 +316,6 @@ def report_question(request):
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
-# --- Stripe Views ---
 @login_required
 def create_checkout_session(request):
     if request.method == 'POST':

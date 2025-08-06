@@ -51,17 +51,10 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    
-    # Authentication must come first
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    
-    # Security: 2FA Middleware (Must be immediately after AuthenticationMiddleware)
     'django_otp.middleware.OTPMiddleware',
-
-    # Admin Enhancements Middleware
-    'impersonate.middleware.ImpersonateMiddleware',       # Added for User Impersonation
-    'simple_history.middleware.HistoryRequestMiddleware', # Added for Audit History
-    
+    'impersonate.middleware.ImpersonateMiddleware',
+    'simple_history.middleware.HistoryRequestMiddleware',
     'users.middleware.EnsureProfileMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -103,7 +96,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
-USE_I18N = True
+USE_I_18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
@@ -131,5 +124,4 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    # This line tells Django to trust POST requests from your live site's URL
     CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
