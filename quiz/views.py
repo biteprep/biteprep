@@ -1,3 +1,5 @@
+# quiz/views.py
+
 import random
 import stripe
 import json
@@ -54,6 +56,7 @@ def cookie_page(request):
 
 @login_required
 def membership_page(request):
+    # FIX #1: Corrected the template name here
     return render(request, 'quiz/membership_page.html')
 
 @login_required
@@ -103,7 +106,7 @@ def dashboard(request):
     return render(request, 'quiz/dashboard.html', context)
 
 
-# --- Core Quiz Views (With All Bug Fixes) ---
+# --- Core Quiz Views ---
 
 @login_required
 def quiz_setup(request):
@@ -225,7 +228,6 @@ def quiz_player(request, question_index):
         
         request.session.modified = True
 
-        # *** FIX: ADDED LOGIC TO HANDLE NAVIGATOR CLICKS ***
         navigate_to_index_str = request.POST.get('navigate_to')
         if navigate_to_index_str:
             try:
@@ -233,8 +235,7 @@ def quiz_player(request, question_index):
                 if 0 < target_index <= len(question_ids):
                     return redirect('quiz_player', question_index=target_index)
             except (ValueError, TypeError):
-                pass # Ignore if the value is not a valid number
-        # *** END FIX ***
+                pass
         
         if action == 'prev' and question_index > 1: return redirect('quiz_player', question_index=question_index - 1)
         if action == 'next' and question_index < len(question_ids): return redirect('quiz_player', question_index=question_index + 1)
@@ -364,9 +365,57 @@ def report_question(request):
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
+# FIX #2: Full implementation of the Stripe checkout session view
 @login_required
-def create_checkout_session(request): pass
-def success_page(request): return render(request, 'quiz/payment_success.html')
-def cancel_page(request): return render(request, 'quiz/payment_canceled.html')
+def create_checkout_session(request):
+    if request.method == 'POST':
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        price_id = request.POST.get('priceId')
+        
+        try:
+            profile = request.user.profile
+            customer_id = profile.stripe_customer_id
+
+            if not customer_id:
+                customer = stripe.Customer.create(
+                    email=request.user.email,
+                    name=request.user.username,
+                )
+                customer_id = customer.id
+                profile.stripe_customer_id = customer_id
+                profile.save()
+
+            success_url = request.build_absolute_uri(reverse('success_page'))
+            cancel_url = request.build_absolute_uri(reverse('cancel_page'))
+
+            checkout_session = stripe.checkout.Session.create(
+                customer=customer_id,
+                payment_method_types=['card'],
+                line_items=[
+                    {
+                        'price': price_id,
+                        'quantity': 1,
+                    },
+                ],
+                mode='subscription',
+                success_url=success_url,
+                cancel_url=cancel_url,
+            )
+            return redirect(checkout_session.url, code=303)
+
+        except Exception as e:
+            messages.error(request, f"An error occurred while setting up payment: {str(e)}")
+            return redirect('membership_page')
+    
+    return redirect('membership_page')
+
+
+def success_page(request): 
+    return render(request, 'quiz/payment_successful.html')
+
+def cancel_page(request): 
+    return render(request, 'quiz/payment_canceled.html')
+
 @csrf_exempt
-def stripe_webhook(request): return HttpResponse(status=200)
+def stripe_webhook(request): 
+    return HttpResponse(status=200)
