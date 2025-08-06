@@ -1,3 +1,5 @@
+# biteprep_project/settings.py
+
 from pathlib import Path
 import os
 import dj_database_url
@@ -14,8 +16,17 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 
+# CORRECTED APP ORDER TO FIX TEMPLATE OVERRIDE CONFLICTS
 INSTALLED_APPS = [
-    # Django defaults (Reordered slightly for clarity)
+    # Project Apps (should be first)
+    'quiz.apps.QuizConfig',
+    'users.apps.UsersConfig',
+
+    # Third-party UI (Crispy forms needs to be high up)
+    'crispy_forms',
+    'crispy_bootstrap5',
+    
+    # Default Django Apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -24,26 +35,15 @@ INSTALLED_APPS = [
     'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
 
-    # Security: 2FA (django-otp)
+    # Other Third-party Apps (Security, Admin enhancements)
     'django_otp',
-    'django_otp.plugins.otp_totp', # For Google Authenticator/Authy
-    
-    # Security: Honeypot
+    'django_otp.plugins.otp_totp', 
     'admin_honeypot',
-
-    # Admin Enhancements
-    'simple_history',           # Added for Audit History
-    'impersonate',              # Added for User Impersonation
-    'rangefilter',              # Added for Date Range Filters
-
-    # Project Apps
-    'quiz.apps.QuizConfig',
-    'users.apps.UsersConfig',
-    
-    # Third-party UI
-    'crispy_forms',
-    'crispy_bootstrap5',
+    'simple_history',
+    'impersonate',
+    'rangefilter',
 ]
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -68,8 +68,6 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'biteprep_project.urls'
-
-# ... (Keep TEMPLATES, WSGI_APPLICATION, DATABASES, AUTH_PASSWORD_VALIDATORS, etc. the same) ...
 
 TEMPLATES = [
     {
