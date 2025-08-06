@@ -15,7 +15,7 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 
 INSTALLED_APPS = [
-    # Django defaults
+    # Django defaults (Reordered slightly for clarity)
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -26,20 +26,19 @@ INSTALLED_APPS = [
 
     # Security: 2FA (django-otp)
     'django_otp',
-    'django_otp.plugins.otp_totp',
+    'django_otp.plugins.otp_totp', # For Google Authenticator/Authy
     
     # Security: Honeypot
     'admin_honeypot',
 
     # Admin Enhancements
-    'simple_history',
-    'impersonate',
-    'rangefilter',
+    'simple_history',           # Added for Audit History
+    'impersonate',              # Added for User Impersonation
+    'rangefilter',              # Added for Date Range Filters
 
     # Project Apps
     'quiz.apps.QuizConfig',
     'users.apps.UsersConfig',
-    'sjt_prep.apps.SjtPrepConfig', # <<< ADDED NEW APP
     
     # Third-party UI
     'crispy_forms',
@@ -60,8 +59,8 @@ MIDDLEWARE = [
     'django_otp.middleware.OTPMiddleware',
 
     # Admin Enhancements Middleware
-    'impersonate.middleware.ImpersonateMiddleware',
-    'simple_history.middleware.HistoryRequestMiddleware',
+    'impersonate.middleware.ImpersonateMiddleware',       # Added for User Impersonation
+    'simple_history.middleware.HistoryRequestMiddleware', # Added for Audit History
     
     'users.middleware.EnsureProfileMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -69,6 +68,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'biteprep_project.urls'
+
+# ... (Keep TEMPLATES, WSGI_APPLICATION, DATABASES, AUTH_PASSWORD_VALIDATORS, etc. the same) ...
 
 TEMPLATES = [
     {
@@ -132,9 +133,5 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    # This line tells Django to trust POST requests from your live site's URL
     CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
-
-# Settings for django-impersonate
-IMPERSONATE = {
-    'REDIRECT_URL': '/dashboard/',
-}
