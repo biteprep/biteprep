@@ -1,7 +1,7 @@
 # users/views.py
 
 from django.shortcuts import render, redirect
-from django.urls import reverse  # <-- CORRECTED: Added the missing import
+from django.urls import reverse
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -19,13 +19,13 @@ def signup(request):
             return redirect('signup_success')
     else:
         form = CustomUserCreationForm()
-    # The 'signup.html' template is in the 'registration' folder
+    # Path is now correct for the unified templates folder
     return render(request, 'registration/signup.html', {'form': form})
 
 @login_required
 def signup_success(request):
-    # This template is in the 'users' app's template folder
-    return render(request, 'users/signup_complete.html')
+    # Path and filename are now correct
+    return render(request, 'users/signup_success.html')
 
 def logout_view(request):
     logout(request)
@@ -34,8 +34,8 @@ def logout_view(request):
 
 @login_required
 def account_page(request):
-    # This template is in the 'users' app's template folder
-    return render(request, 'users/account.html')
+    # Path and filename are now correct for the unified folder
+    return render(request, 'users/account_page.html')
 
 @login_required
 def delete_account(request):
