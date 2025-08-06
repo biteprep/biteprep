@@ -1,6 +1,7 @@
 # users/views.py
 
 from django.shortcuts import render, redirect
+from django.urls import reverse  # <-- CORRECTED: Added the missing import
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -18,12 +19,13 @@ def signup(request):
             return redirect('signup_success')
     else:
         form = CustomUserCreationForm()
+    # The 'signup.html' template is in the 'registration' folder
     return render(request, 'registration/signup.html', {'form': form})
 
 @login_required
 def signup_success(request):
-    # Corrected to match your filename: signup_success.html
-    return render(request, 'registration/signup_success.html')
+    # This template is in the 'users' app's template folder
+    return render(request, 'users/signup_complete.html')
 
 def logout_view(request):
     logout(request)
@@ -32,8 +34,8 @@ def logout_view(request):
 
 @login_required
 def account_page(request):
-    # Corrected to match your filename: account_page.html
-    return render(request, 'registration/account_page.html')
+    # This template is in the 'users' app's template folder
+    return render(request, 'users/account.html')
 
 @login_required
 def delete_account(request):
@@ -55,7 +57,7 @@ def manage_subscription(request):
     try:
         portal_session = stripe.billing_portal.Session.create(
             customer=customer_id,
-            return_url=request.build_absolute_uri(redirect('account').url),
+            return_url=request.build_absolute_uri(reverse('account')),
         )
         return redirect(portal_session.url)
     except Exception as e:
