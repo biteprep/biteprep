@@ -6,27 +6,16 @@ import dj_database_url
 from dotenv import load_dotenv
 
 load_dotenv()
-
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 SECRET_KEY = os.getenv('SECRET_KEY')
-
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
-
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
-
-# CORRECTED APP ORDER TO FIX TEMPLATE OVERRIDE CONFLICTS
 INSTALLED_APPS = [
-    # Project Apps (should be first)
     'quiz.apps.QuizConfig',
     'users.apps.UsersConfig',
-
-    # Third-party UI (Crispy forms needs to be high up)
     'crispy_forms',
     'crispy_bootstrap5',
-    
-    # Default Django Apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -34,8 +23,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
-
-    # Other Third-party Apps (Security, Admin enhancements)
     'django_otp',
     'django_otp.plugins.otp_totp', 
     'admin_honeypot',
@@ -44,7 +31,6 @@ INSTALLED_APPS = [
     'rangefilter',
 ]
 
-
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -52,7 +38,10 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # OTPMiddleware must come after AuthenticationMiddleware
     'django_otp.middleware.OTPMiddleware',
+    # The custom fix must come after OTPMiddleware to override the context
+    'users.middleware.ForceProjectTemplateContextMiddleware', 
     'impersonate.middleware.ImpersonateMiddleware',
     'simple_history.middleware.HistoryRequestMiddleware',
     'users.middleware.EnsureProfileMiddleware',
@@ -80,6 +69,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'biteprep_project.wsgi.application'
 
+# Database configuration (no changes needed here)
 DATABASES = {
     'default': dj_database_url.config(
         default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
@@ -87,6 +77,7 @@ DATABASES = {
     )
 }
 
+# Password validators (no changes needed here)
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',},
@@ -94,31 +85,26 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',},
 ]
 
+# Internationalization, Static files, and other settings (no changes needed here)
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
-USE_I_18N = True
+USE_I18N = True
 USE_TZ = True
-
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY')
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
 STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
-
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'home'
-
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-# Production security settings
+# Security settings for production (no changes needed here)
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True

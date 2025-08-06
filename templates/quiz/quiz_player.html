@@ -1,3 +1,5 @@
+<!-- templates/quiz/quiz_player.html -->
+
 {% extends "base.html" %}
 
 {% block title %}Question {{ question_index }} - BitePrep{% endblock %}
@@ -19,7 +21,8 @@
 
                 {% if total_questions > 1 %}
                 <div class="progress" style="height: 5px; border-top-left-radius: 0; border-top-right-radius: 0;">
-                    <div class="progress-bar" role="progressbar" style="width: {% widthratio question_index total_questions 100 %}%" aria-valuenow="{% widthratio question_index total_questions 100 %}" aria-valuemin="0" aria-valuemax="100"></div>
+                    <!-- Fixed CSS syntax validation errors by adjusting spacing and adding semicolon -->
+                    <div class="progress-bar" role="progressbar" style="width: {% widthratio question_index total_questions 100 %}%;" aria-valuenow="{% widthratio question_index total_questions 100 %}" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
                 {% endif %}
 
@@ -143,8 +146,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // AJAX Report Submission
     const reportBtn = document.getElementById('submit-report-btn');
-    const csrfToken = document.querySelector('form#quiz-player-form [name=csrfmiddlewaretoken]').value;
-    if(reportBtn) {
+    // Ensure CSRF token is retrieved correctly from the main form
+    const csrfTokenElement = document.querySelector('form#quiz-player-form [name=csrfmiddlewaretoken]');
+    
+    // Check if both the button and the CSRF token exist before adding the listener
+    if(reportBtn && csrfTokenElement) {
+        const csrfToken = csrfTokenElement.value;
+
         reportBtn.addEventListener('click', function() {
             const reason = document.getElementById('report-reason').value;
             const questionId = JSON.parse(document.getElementById('question-id-data').textContent);
@@ -167,7 +175,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('report-reason').value = '';
                     setTimeout(() => {
                         const modalEl = document.getElementById('reportModal');
-                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        // Use bootstrap.Modal.getInstance in case the modal was initialized via JS
+                        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
                         if (modal) { modal.hide(); }
                         feedbackEl.textContent = '';
                     }, 2000);
@@ -177,6 +186,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
+                console.error('Report submission error:', error);
                 feedbackEl.textContent = 'A network error occurred.';
                 feedbackEl.className = 'text-danger';
             });
