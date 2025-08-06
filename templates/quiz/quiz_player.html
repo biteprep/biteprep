@@ -21,8 +21,8 @@
 
                 {% if total_questions > 1 %}
                 <div class="progress" style="height: 5px; border-top-left-radius: 0; border-top-right-radius: 0;">
-                    <!-- Fixed CSS syntax validation errors by adjusting spacing and adding semicolon -->
-                    <div class="progress-bar" role="progressbar" style="width: {% widthratio question_index total_questions 100 %}%;" aria-valuenow="{% widthratio question_index total_questions 100 %}" aria-valuemin="0" aria-valuemax="100"></div>
+                    <!-- FIX: Using the variable calculated in the view. This resolves CSS linter errors. -->
+                    <div class="progress-bar" role="progressbar" style="width: {{ progress_percentage }}%;" aria-valuenow="{{ progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
                 {% endif %}
 
@@ -127,21 +127,29 @@ document.addEventListener('DOMContentLoaded', function() {
     // TIMER SCRIPT
     const timerDataEl = document.getElementById('timer-data');
     if (timerDataEl) {
-        let secondsRemaining = JSON.parse(timerDataEl.textContent);
-        const timerDisplay = document.getElementById('timer');
-        if (secondsRemaining !== null && timerDisplay) {
-            const timerInterval = setInterval(() => {
-                if (secondsRemaining <= 0) {
-                    clearInterval(timerInterval);
-                    timerDisplay.textContent = 'Time Up!';
-                    document.getElementById('finish-quiz-button').click();
-                    return;
+        let timerDataContent = timerDataEl.textContent;
+        // Check if the content is valid JSON before parsing
+        if (timerDataContent && timerDataContent.trim() !== '') {
+            try {
+                let secondsRemaining = JSON.parse(timerDataContent);
+                const timerDisplay = document.getElementById('timer');
+                if (secondsRemaining !== null && timerDisplay) {
+                    const timerInterval = setInterval(() => {
+                        if (secondsRemaining <= 0) {
+                            clearInterval(timerInterval);
+                            timerDisplay.textContent = 'Time Up!';
+                            document.getElementById('finish-quiz-button').click();
+                            return;
+                        }
+                        secondsRemaining--;
+                        const minutes = Math.floor(secondsRemaining / 60);
+                        const seconds = secondsRemaining % 60;
+                        timerDisplay.textContent = `Time Left: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    }, 1000);
                 }
-                secondsRemaining--;
-                const minutes = Math.floor(secondsRemaining / 60);
-                const seconds = secondsRemaining % 60;
-                timerDisplay.textContent = `Time Left: ${minutes}:${seconds.toString().padStart(2, '0')}`;
-            }, 1000);
+            } catch (e) {
+                console.error("Error parsing timer data:", e);
+            }
         }
     }
     // AJAX Report Submission
@@ -155,7 +163,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
         reportBtn.addEventListener('click', function() {
             const reason = document.getElementById('report-reason').value;
-            const questionId = JSON.parse(document.getElementById('question-id-data').textContent);
+            const questionIdDataEl = document.getElementById('question-id-data');
+            
+            if (!questionIdDataEl) {
+                console.error("Question ID data element not found.");
+                return;
+            }
+
+            let questionId;
+            try {
+                questionId = JSON.parse(questionIdDataEl.textContent);
+            } catch (e) {
+                console.error("Error parsing question ID data:", e);
+                return;
+            }
+
             const feedbackEl = document.getElementById('report-feedback-message');
             if (!reason.trim()) {
                 feedbackEl.textContent = 'Please provide a reason for the report.';
@@ -175,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('report-reason').value = '';
                     setTimeout(() => {
                         const modalEl = document.getElementById('reportModal');
-                        // Use bootstrap.Modal.getInstance in case the modal was initialized via JS
+                        // Use bootstrap.Modal.getOrCreateInstance to ensure we get the modal instance
                         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
                         if (modal) { modal.hide(); }
                         feedbackEl.textContent = '';

@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'rangefilter',
 ]
 
+# MIDDLEWARE updated: Removed ForceProjectTemplateContextMiddleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -40,8 +41,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     # OTPMiddleware must come after AuthenticationMiddleware
     'django_otp.middleware.OTPMiddleware',
-    # The custom fix must come after OTPMiddleware to override the context
-    'users.middleware.ForceProjectTemplateContextMiddleware', 
+    # 'users.middleware.ForceProjectTemplateContextMiddleware', # REMOVED
     'impersonate.middleware.ImpersonateMiddleware',
     'simple_history.middleware.HistoryRequestMiddleware',
     'users.middleware.EnsureProfileMiddleware',
@@ -69,7 +69,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'biteprep_project.wsgi.application'
 
-# Database configuration (no changes needed here)
+# Database configuration
 DATABASES = {
     'default': dj_database_url.config(
         default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
@@ -77,7 +77,7 @@ DATABASES = {
     )
 }
 
-# Password validators (no changes needed here)
+# Password validators
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',},
@@ -85,7 +85,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',},
 ]
 
-# Internationalization, Static files, and other settings (no changes needed here)
+# Internationalization, Static files, and other settings
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
@@ -104,7 +104,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-# Security settings for production (no changes needed here)
+# Security settings for production
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_SSL_REDIRECT = True

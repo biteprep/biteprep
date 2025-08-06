@@ -6,34 +6,80 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django_otp.admin import OTPAdminSite
 from django.contrib.admin.sites import site
+# Import the built-in authentication views
+from django.contrib.auth import views as auth_views
 
-# Create a new, isolated instance of the OTP admin site.
 otp_admin_site = OTPAdminSite()
-
-# This loop finds all models registered with the default admin site and also registers them with our new OTP site.
 for model, model_admin in site._registry.items():
     otp_admin_site.register(model, model_admin.__class__)
 
-SECRET_ADMIN_PATH = 'manage-biteprep-secure-access/' 
+SECRET_ADMIN_PATH = 'manage-biteprep-secure-access/'
 
 urlpatterns = [
-    # Admin and third-party apps
     path('admin/', include('admin_honeypot.urls', namespace='admin_honeypot')),
     path(SECRET_ADMIN_PATH, otp_admin_site.urls),
     path('impersonate/', include('impersonate.urls')),
+
+    # --- FIX START: Explicitly define auth routes to bypass admin context hijacking ---
     
-    # All account management URLs (built-in and custom)
-    path('accounts/', include('django.contrib.auth.urls')),
+    # Login/Logout (Ensuring correct templates)
+    path('accounts/login/',
+        auth_views.LoginView.as_view(
+            template_name='registration/login.html'
+        ),
+        name='login'),
+    path('accounts/logout/',
+        auth_views.LogoutView.as_view(
+            # LogoutView doesn't typically need a template_name if LOGOUT_REDIRECT_URL is set in settings
+        ),
+        name='logout'),
+
+    # Password Change (While logged in)
+    path('accounts/password_change/',
+        auth_views.PasswordChangeView.as_view(
+            template_name='registration/password_change_form.html'
+        ),
+        name='password_change'),
+    path('accounts/password_change/done/',
+        auth_views.PasswordChangeDoneView.as_view(
+            template_name='registration/password_change_done.html'
+        ),
+        name='password_change_done'),
+
+    # Password Reset (When forgotten)
+    path('accounts/password_reset/',
+        auth_views.PasswordResetView.as_view(
+            template_name='registration/password_reset_form.html',
+            email_template_name='registration/password_reset_email.html'
+        ),
+        name='password_reset'),
+    path('accounts/password_reset/done/',
+        auth_views.PasswordResetDoneView.as_view(
+            template_name='registration/password_reset_done.html'
+        ),
+        name='password_reset_done'),
+    path('accounts/reset/<uidb64>/<token>/',
+        auth_views.PasswordResetConfirmView.as_view(
+            template_name='registration/password_reset_confirm.html'
+        ),
+        name='password_reset_confirm'),
+    path('accounts/reset/done/',
+        auth_views.PasswordResetCompleteView.as_view(
+            template_name='registration/password_reset_complete.html'
+        ),
+        name='password_reset_complete'),
+        
+    # --- FIX END ---
+
+    # Note: We no longer need include('django.contrib.auth.urls') as all paths are defined above.
+
     path('accounts/', include('users.urls')),
-    
-    # The main quiz app URLs
     path('', include('quiz.urls')),
 ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-# Customize our new admin instance
 otp_admin_site.site_header = "BitePrep Administration Console"
 otp_admin_site.site_title = "BitePrep Admin"
 otp_admin_site.index_title = "Management Dashboard"

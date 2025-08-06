@@ -4,7 +4,6 @@ import random
 import stripe
 import json
 from datetime import date, datetime, timedelta
-
 from django.shortcuts import render, redirect, HttpResponse
 from django.conf import settings
 from django.http import JsonResponse
@@ -15,8 +14,6 @@ from django.db.models.functions import TruncDate
 from django.contrib import messages
 from django.urls import reverse
 from django.utils import timezone
-
-# CORRECTED: Added QuestionReport to the import list
 from .models import Category, Question, Answer, UserAnswer, FlaggedQuestion, QuestionReport
 from .forms import ContactForm
 
@@ -35,12 +32,14 @@ def contact_page(request):
     else:
         initial_data = {}
         if request.user.is_authenticated:
+            # Assuming username and email fields exist on the User model
             initial_data = {'name': request.user.username, 'email': request.user.email}
         form = ContactForm(initial=initial_data)
     return render(request, 'quiz/contact.html', {'form': form})
 
+# Assuming template names based on previous context
 def terms_page(request):
-    return render(request, 'quiz/terms_and_conditions.html')
+    return render(request, 'quiz/terms_and_conditions.html') 
 
 def privacy_page(request):
     return render(request, 'quiz/privacy_policy.html')
@@ -95,7 +94,8 @@ def dashboard(request):
 @login_required
 def quiz_setup(request):
     if request.method == 'POST':
-        profile = request.user.profile
+        # Assuming Profile model is linked via OneToOneField named 'profile'
+        profile = request.user.profile 
         is_active_subscription = profile.membership_expiry_date and profile.membership_expiry_date >= date.today()
         if not (profile.membership == 'Free' or is_active_subscription):
             messages.warning(request, "Your subscription has expired. Please renew your plan.")
@@ -162,20 +162,28 @@ def quiz_player(request, question_index):
     if not quiz_context:
         messages.error(request, "Quiz session not found. Please start a new quiz.")
         return redirect('quiz_setup')
+    
     question_ids = quiz_context.get('question_ids', [])
-    if not (0 < question_index <= len(question_ids)):
+    total_questions = len(question_ids) # Define total_questions early
+
+    if not (0 < question_index <= total_questions):
         return redirect('quiz_results')
+    
     question_id = question_ids[question_index - 1]
     quiz_mode = quiz_context.get('mode', 'quiz')
     is_feedback_mode = False
+
+    # Handle POST request
     if request.method == 'POST':
         action = request.POST.get('action')
         submitted_answer_id_str = request.POST.get('answer')
         user_answers = quiz_context.get('user_answers', {})
         current_answer_info = user_answers.get(str(question_id), {}).copy()
         is_submitted_now = current_answer_info.get('is_submitted', False)
+        
         if quiz_mode == 'quiz' and action == 'submit_answer':
             is_submitted_now = True
+            
         if submitted_answer_id_str:
             try:
                 answer = Answer.objects.get(id=int(submitted_answer_id_str), question_id=question_id)
@@ -187,25 +195,41 @@ def quiz_player(request, question_index):
             except (Answer.DoesNotExist, ValueError): pass
         elif is_submitted_now and str(question_id) not in user_answers:
              quiz_context['user_answers'][str(question_id)] = {'answer_id': None, 'is_correct': False, 'is_submitted': True}
+
         if action == 'toggle_flag':
             flag, created = FlaggedQuestion.objects.get_or_create(user=request.user, question_id=question_id)
             if not created: flag.delete()
+            
         request.session.modified = True
+        
         navigate_to_index_str = request.POST.get('navigate_to')
         if navigate_to_index_str:
             try:
                 target_index = int(navigate_to_index_str)
-                if 0 < target_index <= len(question_ids):
+                if 0 < target_index <= total_questions:
                     return redirect('quiz_player', question_index=target_index)
             except (ValueError, TypeError):
                 pass
+            
         if action == 'prev' and question_index > 1: return redirect('quiz_player', question_index=question_index - 1)
-        if action == 'next' and question_index < len(question_ids): return redirect('quiz_player', question_index=question_index + 1)
+        if action == 'next' and question_index < total_questions: return redirect('quiz_player', question_index=question_index + 1)
         if action == 'finish': return redirect('quiz_results')
+
+    # --- FIX START: Calculate Progress Percentage ---
+    # This calculation resolves the IDE CSS validation errors by moving logic out of the template.
+    if total_questions > 0:
+        # Use the current index for the calculation.
+        progress_percentage = round((question_index / total_questions) * 100)
+    else:
+        progress_percentage = 0
+    # --- FIX END ---
+
+    # Prepare context data
     question = Question.objects.prefetch_related('answers').get(pk=question_id)
     user_answers = quiz_context.get('user_answers', {})
     user_answer_info = user_answers.get(str(question_id))
     seconds_remaining = None
+    
     if 'start_time' in quiz_context:
         start_time = datetime.fromisoformat(quiz_context['start_time'])
         duration = timedelta(seconds=quiz_context.get('duration_seconds', 0))
@@ -214,8 +238,10 @@ def quiz_player(request, question_index):
         if seconds_remaining <= 0:
             messages.info(request, "Time is up! The quiz has been automatically submitted.")
             return redirect('quiz_results')
+        
     user_flagged_ids = set(FlaggedQuestion.objects.filter(user=request.user, question_id__in=question_ids).values_list('question_id', flat=True))
     navigator_items = []
+    
     for i, q_id in enumerate(question_ids):
         idx = i + 1
         answer_info = user_answers.get(str(q_id))
@@ -231,17 +257,28 @@ def quiz_player(request, question_index):
         if idx == question_index:
             btn_class = btn_class.replace('btn-outline-', 'btn-') + ' active'
         navigator_items.append({'index': idx, 'class': btn_class, 'is_flagged': q_id in user_flagged_ids})
+        
     if quiz_mode == 'quiz' and user_answer_info and user_answer_info.get('is_submitted'):
         is_feedback_mode = True
+    
+    # Safely fetch user answer object
+    user_answer_obj = None
+    if is_feedback_mode and user_answer_info and user_answer_info.get('answer_id'):
+        try:
+            user_answer_obj = Answer.objects.get(id=user_answer_info['answer_id'])
+        except Answer.DoesNotExist:
+            pass
+
     context = {
         'question': question,
         'question_index': question_index,
-        'total_questions': len(question_ids),
+        'total_questions': total_questions,
+        'progress_percentage': progress_percentage, # Added to context
         'quiz_context': quiz_context,
         'is_feedback_mode': is_feedback_mode,
         'user_selected_answer_id': user_answer_info.get('answer_id') if user_answer_info else None,
-        'user_answer': Answer.objects.get(id=user_answer_info['answer_id']) if is_feedback_mode and user_answer_info and user_answer_info.get('answer_id') else None,
-        'is_last_question': question_index == len(question_ids),
+        'user_answer': user_answer_obj,
+        'is_last_question': question_index == total_questions,
         'flagged_questions': user_flagged_ids,
         'seconds_remaining': seconds_remaining,
         'navigator_items': navigator_items,
@@ -263,13 +300,26 @@ def quiz_results(request):
         if question:
             answer_info = user_answers_dict.get(str(q_id))
             user_answer_obj = None
-            if answer_info and answer_info.get('answer_id'):
-                user_answer_obj = next((a for a in question.answers.all() if a.id == answer_info['answer_id']), None)
-                if user_answer_obj:
-                    UserAnswer.objects.update_or_create(user=request.user, question=question, defaults={'is_correct': user_answer_obj.is_correct})
-                    if user_answer_obj.is_correct:
-                        final_score += 1
+            # Check if an answer was submitted (even if no option was selected in Quiz mode)
+            if answer_info:
+                if answer_info.get('answer_id'):
+                    user_answer_obj = next((a for a in question.answers.all() if a.id == answer_info['answer_id']), None)
+                
+                # Determine correctness (False if no answer selected but submitted)
+                is_correct = answer_info.get('is_correct', False)
+                
+                # Update or create UserAnswer record
+                UserAnswer.objects.update_or_create(
+                    user=request.user, 
+                    question=question, 
+                    defaults={'is_correct': is_correct}
+                )
+                
+                if is_correct:
+                    final_score += 1
+                    
             review_data.append({'question': question, 'user_answer': user_answer_obj})
+
     total_questions = len(question_ids)
     percentage_score = (final_score / total_questions * 100) if total_questions > 0 else 0
     context = {'final_score': final_score, 'total_questions': total_questions, 'percentage_score': round(percentage_score, 2), 'review_data': review_data}
@@ -309,9 +359,21 @@ def report_question(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            question = Question.objects.get(pk=data.get('question_id'))
-            QuestionReport.objects.update_or_create(user=request.user, question=question, defaults={'reason': data.get('reason'), 'status': 'OPEN'})
+            question_id = data.get('question_id')
+            reason = data.get('reason')
+
+            if not question_id or not reason:
+                return JsonResponse({'status': 'error', 'message': 'Missing question ID or reason.'}, status=400)
+
+            question = Question.objects.get(pk=question_id)
+            QuestionReport.objects.update_or_create(
+                user=request.user, 
+                question=question, 
+                defaults={'reason': reason, 'status': 'OPEN'}
+            )
             return JsonResponse({'status': 'success', 'message': 'Report submitted successfully!'})
+        except Question.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Question not found.'}, status=404)
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
@@ -356,4 +418,5 @@ def cancel_page(request):
 
 @csrf_exempt
 def stripe_webhook(request): 
+    # Webhook handling logic should be implemented here
     return HttpResponse(status=200)
