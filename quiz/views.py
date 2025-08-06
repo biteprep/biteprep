@@ -54,7 +54,7 @@ def cookie_page(request):
 
 @login_required
 def membership_page(request):
-    return render(request, 'quiz/membership.html')
+    return render(request, 'quiz/membership_page.html')
 
 @login_required
 def dashboard(request):
