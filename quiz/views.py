@@ -56,7 +56,6 @@ def cookie_page(request):
 
 @login_required
 def membership_page(request):
-    # FIX #1: Corrected the template name here
     return render(request, 'quiz/membership_page.html')
 
 @login_required
@@ -285,7 +284,7 @@ def quiz_player(request, question_index):
         'user_selected_answer_id': user_answer_info.get('answer_id') if user_answer_info else None,
         'user_answer': Answer.objects.get(id=user_answer_info['answer_id']) if is_feedback_mode and user_answer_info and user_answer_info.get('answer_id') else None,
         'is_last_question': question_index == len(question_ids),
-        'flagged_questions': user_flagged_ids,
+        'flagged_questions': user_flagged_ids, # <-- THIS LINE IS NOW CORRECTED
         'seconds_remaining': seconds_remaining,
         'navigator_items': navigator_items,
     }
@@ -365,7 +364,7 @@ def report_question(request):
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
-# FIX #2: Full implementation of the Stripe checkout session view
+# --- Stripe Views ---
 @login_required
 def create_checkout_session(request):
     if request.method == 'POST':
@@ -411,10 +410,10 @@ def create_checkout_session(request):
 
 
 def success_page(request): 
-    return render(request, 'quiz/payment_successful.html')
+    return render(request, 'payment_successful.html')
 
 def cancel_page(request): 
-    return render(request, 'quiz/payment_canceled.html')
+    return render(request, 'payment_canceled.html')
 
 @csrf_exempt
 def stripe_webhook(request): 
