@@ -6,21 +6,21 @@
 {% block content %}
 <div class="container">
     <div class="text-center mb-5">
-        <h1>Contact Us</h1>
-        <p class="lead">Have a question or need some help? We'd love to hear from you.</p>
+        <h1 class="mb-1">Contact Us</h1>
+        <p class="lead text-muted">We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
     </div>
 
-    <div class="row g-5">
+    <div class="row g-5 justify-content-center">
         <!-- Contact Form Column -->
-        <div class="col-md-7">
+        <div class="col-lg-7">
             <div class="card shadow-sm">
-                <div class="card-body p-4">
-                    <h3 class="card-title text-center mb-4"><i class="bi bi-envelope-paper"></i> Send a Message</h3>
+                <div class="card-body p-4 p-md-5">
+                    <h3 class="card-title mb-4"><i class="bi bi-envelope-paper me-2"></i>Send a Message</h3>
                     <form method="post">
                         {% csrf_token %}
                         {{ form|crispy }}
                         <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg">Send Message</button>
+                            <button type="submit" class="btn btn-primary btn-lg">Submit Inquiry</button>
                         </div>
                     </form>
                 </div>
@@ -28,24 +28,26 @@
         </div>
 
         <!-- Contact Info Column -->
-        <div class="col-md-5">
-            <h4>Get in Touch</h4>
-            <p>You can reach us directly via email for any specific inquiries. We aim to respond to all messages within 24-48 hours.</p>
-            <hr>
-            <ul class="list-unstyled">
-                <li class="mb-3">
-                    <strong><i class="bi bi-question-circle-fill text-primary me-2"></i> General Support:</strong><br>
-                    <a href="mailto:biteprep@outlook.com">biteprep@outlook.com</a>
-                </li>
-                <li class="mb-3">
-                    <strong><i class="bi bi-cash-coin text-primary me-2"></i> Billing & Subscriptions:</strong><br>
-                    <a href="mailto:biteprep@outlook.com">biteprep@outlook.com</a>
-                </li>
-                <li>
-                    <strong><i class="bi bi-book-half text-primary me-2"></i> Content & Feedback:</strong><br>
-                    <a href="mailto:biteprep@outlook.com">biteprep@outlook.com</a>
-                </li>
-            </ul>
+        <div class="col-lg-4">
+            <div class="card bg-body-tertiary">
+                <div class="card-body p-4">
+                    <h4>Direct Contact</h4>
+                    <p>If you prefer, you can reach us directly via email. We aim to respond within 24-48 hours.</p>
+                    <hr>
+                    <ul class="list-unstyled">
+                        <li class="mb-3">
+                            <i class="bi bi-envelope-fill text-primary me-2"></i>
+                            <strong>Email:</strong><br>
+                            <a href="mailto:biteprep@outlook.com">biteprep@outlook.com</a>
+                        </li>
+                         <li class="mb-3">
+                            <i class="bi bi-geo-alt-fill text-primary me-2"></i>
+                            <strong>Location:</strong><br>
+                            Based in the United Kingdom
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 </div>

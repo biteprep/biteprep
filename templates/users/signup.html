@@ -5,9 +5,13 @@
 
 {% block content %}
     <div class="container" style="max-width: 500px;">
-        <div class="card shadow-sm">
+        <div class="card shadow-lg">
             <div class="card-body p-4 p-md-5">
-                <h2 class="text-center card-title mb-4">Create Your BitePrep Account</h2>
+                <div class="text-center mb-4">
+                    <h2 class="card-title">Create Your Account</h2>
+                    <p class="text-muted">Get started with your free trial today.</p>
+                </div>
+
                 <form method="post">
                     {% csrf_token %}
                     {{ form|crispy }}
@@ -16,6 +20,7 @@
                     </div>
                 </form>
                 <div class="text-center mt-4">
+                    <hr>
                     <p class="mb-0">Already have an account? <a href="{% url 'login' %}">Log In</a></p>
                 </div>
             </div>

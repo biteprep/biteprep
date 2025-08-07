@@ -1,90 +1,122 @@
 {% extends "base.html" %}
 
-{% block head_styles %}
-<style>
-    .avatar {
-        width: 80px;
-        height: 80px;
-        background-color: #0d6efd; /* Bootstrap primary blue */
-        color: white;
-        font-size: 2.5rem;
-        font-weight: 600;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-</style>
-{% endblock %}
+{% block title %}My Account - BitePrep{% endblock %}
+
+<!-- Removed inline styles, relying on the global CSS -->
+{% block head_styles %}{% endblock %}
 
 
 {% block content %}
 <div class="container" style="max-width: 800px;">
-    
+
     <!-- Profile Header -->
     <div class="d-flex align-items-center mb-5">
-        <div class="avatar me-4">{{ user.username|first|upper }}</div>
+        <div class="me-4">
+            <!-- CSS-based Avatar -->
+            <div class="d-flex align-items-center justify-content-center bg-primary text-white rounded-circle" style="width: 80px; height: 80px; font-size: 2.5rem; font-weight: bold;">
+                {{ user.username|first|upper }}
+            </div>
+        </div>
         <div>
-            <h1 class="mb-0">My Account</h1>
+            <h1 class="mb-0">{{ user.username }}</h1>
             <p class="lead text-muted">{{ user.email }}</p>
         </div>
     </div>
 
     <!-- Subscription Details -->
-    <div class="card shadow-sm mb-4 border-primary">
+    <div class="card mb-4 border-primary shadow-sm">
         <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="bi bi-gem me-2"></i>Subscription</h5>
+            <h5 class="mb-0"><i class="bi bi-gem me-2"></i>Subscription Details</h5>
         </div>
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <span>Current Plan:</span>
-                <span class="badge fs-6 bg-primary-subtle text-primary-emphasis">{{ user.profile.membership }}</span>
-            </div>
-            {% if user.profile.membership != 'Free' %}
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span>Access Valid Until:</span>
-                    <strong>{{ user.profile.membership_expiry_date|date:"F j, Y" }}</strong>
+        <div class="card-body p-4">
+            <div class="row mb-3">
+                <div class="col-sm-4"><strong>Current Plan:</strong></div>
+                <div class="col-sm-8">
+                    <span class="badge fs-6 bg-primary">{{ user.profile.membership }}</span>
                 </div>
-                <hr>
-                <a href="{% url 'manage_subscription' %}" class="btn btn-primary w-100">Manage Subscription in Stripe</a>
+            </div>
+
+            {% if user.profile.membership != 'Free' %}
+                <div class="row mb-4">
+                    <div class="col-sm-4"><strong>Access Valid Until:</strong></div>
+                    <div class="col-sm-8">
+                        <strong>{{ user.profile.membership_expiry_date|date:"F j, Y" }}</strong>
+                    </div>
+                </div>
+                <div class="d-grid">
+                    <a href="{% url 'manage_subscription' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-credit-card me-2"></i>Manage Subscription via Stripe
+                    </a>
+                </div>
             {% else %}
-                <p>You are on the free plan. Upgrade now for full access!</p>
-                <a href="{% url 'membership_page' %}" class="btn btn-success w-100">Upgrade My Plan</a>
+                <div class="alert alert-info">
+                    You are currently on the free trial plan.
+                </div>
+                <div class="d-grid">
+                    <a href="{% url 'membership_page' %}" class="btn btn-success">
+                        <i class="bi bi-arrow-up-circle me-2"></i>Upgrade My Plan
+                    </a>
+                </div>
             {% endif %}
         </div>
     </div>
 
     <!-- Security -->
-    <div class="card shadow-sm mb-4">
+    <div class="card mb-4 shadow-sm">
         <div class="card-header">
             <h5 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Security</h5>
         </div>
-        <div class="card-body">
+        <div class="card-body p-4">
             <div class="d-flex justify-content-between align-items-center">
-                <span>Manage your password.</span>
+                <div>
+                    <strong>Password Management</strong>
+                    <p class="text-muted mb-0">Update your login credentials.</p>
+                </div>
                 <a href="{% url 'password_change' %}" class="btn btn-secondary">Change Password</a>
             </div>
         </div>
     </div>
 
     <!-- Danger Zone -->
-    <div class="card shadow-sm border-danger">
+    <div class="card border-danger shadow-sm">
         <div class="card-header bg-danger-subtle text-danger-emphasis">
             <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Danger Zone</h5>
         </div>
-        <div class="card-body">
+        <div class="card-body p-4">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <strong>Delete Your Account</strong>
+                    <strong>Delete Account</strong>
                     <p class="text-muted mb-0">This action is permanent and cannot be undone.</p>
                 </div>
-                <form action="{% url 'delete_account' %}" method="post" onsubmit="return confirm('Are you absolutely sure you want to delete your account? This action is permanent.');">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">Delete My Account</button>
-                </form>
+                <!-- Use Modal for confirmation -->
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+                    Delete My Account
+                </button>
             </div>
         </div>
     </div>
 
+</div>
+
+<!-- Delete Account Modal -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="deleteAccountModalLabel">Confirm Account Deletion</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you absolutely sure you want to delete your account? All your data will be lost. <strong>This action is permanent.</strong>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form action="{% url 'delete_account' %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Yes, Delete My Account</button>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

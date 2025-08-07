@@ -3,90 +3,91 @@
 {% block title %}Your Dashboard - BitePrep{% endblock %}
 
 {% block content %}
-    <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-5">
         <div class="text-start">
-            <h1><i class="bi bi-speedometer2"></i> Your Dashboard</h1>
-            <p class="lead mb-0">Welcome back, {{ user.username }}! Here's a summary of your progress.</p>
+            <h1 class="mb-1">Your Dashboard</h1>
+            <p class="lead text-muted">Welcome back, {{ user.username }}! Track your progress below.</p>
         </div>
         <div>
-            <form action="{% url 'reset_performance' %}" method="post" onsubmit="return confirm('Are you sure you want to permanently reset all your performance data? This action cannot be undone.');">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-danger">
-                    <i class="bi bi-arrow-counterclockwise"></i> Reset Performance
-                </button>
-            </form>
+            <!-- Use a Modal for confirmation instead of the browser default confirm() -->
+            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#resetModal">
+                <i class="bi bi-arrow-counterclockwise"></i> Reset Stats
+            </button>
         </div>
     </div>
 
     <!-- Overall Stats Section -->
-    <div class="row text-center g-4">
+    <div class="row text-center g-4 mb-5">
         <div class="col-md-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title text-muted"><i class="bi bi-collection"></i> Total Questions Answered</h5>
-                    <p class="card-text fs-1 fw-bold text-primary">{{ total_answered }}</p>
+            <!-- Added icons and borders to emphasize the stats -->
+            <div class="card h-100 border-primary">
+                <div class="card-body p-4">
+                    <div class="fs-1 mb-2 text-primary"><i class="bi bi-collection"></i></div>
+                    <h5 class="card-title text-muted">Total Answered</h5>
+                    <p class="card-text fs-2 fw-bold">{{ total_answered }}</p>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title text-muted"><i class="bi bi-check2-circle"></i> Correct Answers</h5>
-                    <p class="card-text fs-1 fw-bold text-success">{{ correct_answered }}</p>
+            <div class="card h-100 border-success">
+                <div class="card-body p-4">
+                    <div class="fs-1 mb-2 text-success"><i class="bi bi-check2-circle"></i></div>
+                    <h5 class="card-title text-muted">Correct Answers</h5>
+                    <p class="card-text fs-2 fw-bold">{{ correct_answered }}</p>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title text-muted"><i class="bi bi-bullseye"></i> Overall Percentage</h5>
-                    <p class="card-text fs-1 fw-bold text-info">{{ overall_percentage }}%</p>
+            <div class="card h-100 border-info">
+                <div class="card-body p-4">
+                     <div class="fs-1 mb-2 text-info"><i class="bi bi-bullseye"></i></div>
+                    <h5 class="card-title text-muted">Overall Accuracy</h5>
+                    <p class="card-text fs-2 fw-bold">{{ overall_percentage }}%</p>
                 </div>
             </div>
         </div>
     </div>
-    <hr class="my-4">
 
     <!-- Action Panel Section -->
-    <div class="card shadow-sm mb-4">
+    <div class="card mb-5">
         <div class="card-header">
-            <h3 class="mb-0"><i class="bi bi-lightning-charge-fill"></i> Actionable Review</h3>
+            <h3 class="mb-0"><i class="bi bi-lightning-charge-fill me-2"></i>Targeted Review</h3>
         </div>
-        <div class="card-body">
+        <div class="card-body p-4">
             <!-- Incorrect Review Panel -->
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h4><i class="bi bi-x-octagon text-danger"></i> Review Your Incorrect Answers</h4>
+                    <h4><i class="bi bi-x-octagon text-danger me-2"></i>Incorrect Answers</h4>
                     {% if incorrect_questions_count > 0 %}
-                        <p class="mb-md-0">You have <strong>{{ incorrect_questions_count }}</strong> questions you've previously answered incorrectly.</p>
+                        <p class="mb-md-0">You have <strong>{{ incorrect_questions_count }}</strong> questions previously answered incorrectly.</p>
                     {% else %}
-                        <p class="text-muted mb-md-0">You have no incorrect answers recorded. Amazing work!</p>
+                        <p class="text-muted mb-md-0">Amazing work! You have no incorrect answers recorded.</p>
                     {% endif %}
                 </div>
                 <div class="col-md-4 text-md-end">
                     {% if incorrect_questions_count > 0 %}
-                        <a href="{% url 'start_incorrect_quiz' %}" class="btn btn-primary btn-lg">Start Review Quiz</a>
+                        <a href="{% url 'start_incorrect_quiz' %}" class="btn btn-primary">Review Incorrect</a>
                     {% else %}
-                        <a href="#" class="btn btn-primary btn-lg disabled">Nothing to Review</a>
+                        <a href="#" class="btn btn-primary disabled">Nothing to Review</a>
                     {% endif %}
                 </div>
             </div>
-            <hr class="my-3">
+            <hr class="my-4">
             <!-- Flagged Questions Panel -->
             <div class="row align-items-center">
                 <div class="col-md-8">
-                    <h4><i class="bi bi-flag-fill text-warning"></i> Review Your Flagged Questions</h4>
+                    <h4><i class="bi bi-flag-fill text-warning me-2"></i>Flagged Questions</h4>
                     {% if flagged_questions_count > 0 %}
-                        <p class="mb-md-0">You have <strong>{{ flagged_questions_count }}</strong> questions flagged for future review.</p>
+                        <p class="mb-md-0">You have <strong>{{ flagged_questions_count }}</strong> questions flagged for review.</p>
                     {% else %}
-                        <p class="text-muted mb-md-0">You can flag questions during a quiz to easily review them later.</p>
+                        <p class="text-muted mb-md-0">Flag questions during a quiz to review them here later.</p>
                     {% endif %}
                 </div>
                 <div class="col-md-4 text-md-end">
                     {% if flagged_questions_count > 0 %}
-                        <a href="{% url 'start_flagged_quiz' %}" class="btn btn-warning btn-lg">Review Flagged</a>
+                        <a href="{% url 'start_flagged_quiz' %}" class="btn btn-warning">Review Flagged</a>
                     {% else %}
-                        <a href="#" class="btn btn-warning btn-lg disabled">Nothing to Review</a>
+                        <a href="#" class="btn btn-warning disabled">Nothing to Review</a>
                     {% endif %}
                 </div>
             </div>
@@ -94,82 +95,148 @@
     </div>
 
     <!-- Performance Chart Section -->
-    <h2 class="mb-4"><i class="bi bi-graph-up"></i> Performance Over Last 30 Days</h2>
-    <div class="card shadow-sm mb-4">
+    <h2 class="mb-4"><i class="bi bi-graph-up me-2"></i>Performance (Last 30 Days)</h2>
+    <div class="card mb-5">
         <div class="card-body">
             {% if chart_data != "[]" %}
-                <canvas id="performanceChart"></canvas>
+                <!-- Added height attribute for better aspect ratio -->
+                <canvas id="performanceChart" height="100"></canvas>
             {% else %}
-                <p class="text-center p-3">No recent activity to display. <a href="{% url 'quiz_setup' %}">Start a quiz</a> to track your performance!</p>
+                <div class="alert alert-info text-center">
+                    No recent activity to display. <a href="{% url 'quiz_setup' %}" class="alert-link">Start a quiz</a> to track your performance!
+                </div>
             {% endif %}
         </div>
     </div>
 
     <!-- Performance by Topic Accordion Section -->
-    <h2 class="mb-4"><i class="bi bi-card-list"></i> Performance by Topic</h2>
+    <h2 class="mb-4"><i class="bi bi-card-list me-2"></i>Performance by Topic</h2>
     <div class="accordion" id="performanceAccordion">
         {% if topic_stats %}
             {% for topic_name, topic_data in topic_stats.items %}
                 <div class="accordion-item">
-                    <h2 class="accordion-header" id="heading-{{ topic_data.id }}">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ topic_data.id }}" aria-expanded="false" aria-controls="collapse-{{ topic_data.id }}">
-                            <div class="d-flex justify-content-between w-100 me-3">
+                    <!-- Use forloop.counter for unique IDs as topic_data.id is not available -->
+                    <h2 class="accordion-header" id="heading-{{ forloop.counter }}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ forloop.counter }}" aria-expanded="false" aria-controls="collapse-{{ forloop.counter }}">
+                            <div class="d-flex justify-content-between w-100 pe-3">
                                 <span class="fw-bold">{{ topic_name }}</span>
                                 <span>
-                                    <span class="badge bg-secondary me-2">{{ topic_data.correct }}/{{ topic_data.total }}</span>
+                                    <span class="text-muted me-3">{{ topic_data.correct }}/{{ topic_data.total }}</span>
                                     <span class="badge bg-primary">{{ topic_data.percentage }}%</span>
                                 </span>
                             </div>
                         </button>
                     </h2>
-                    <div id="collapse-{{ topic_data.id }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ topic_data.id }}" data-bs-parent="#performanceAccordion">
+                    <div id="collapse-{{ forloop.counter }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ forloop.counter }}" data-bs-parent="#performanceAccordion">
                         <div class="accordion-body p-0">
                             <table class="table table-striped table-hover mb-0">
                                 <thead class="table-light">
-                                    <tr><th scope="col">Subtopic</th><th scope="col" class="text-center">Answered</th><th scope="col" class="text-center">Correct</th><th scope="col" class="text-center">Percentage</th></tr>
+                                    <tr>
+                                        <th scope="col">Subtopic</th>
+                                        <th scope="col" class="text-end">Answered</th>
+                                        <th scope="col" class="text-end">Correct</th>
+                                        <th scope="col" class="text-end">Percentage</th>
+                                    </tr>
                                 </thead>
                                 <tbody>
                                     {% for subtopic in topic_data.subtopics %}
-                                        <tr><td>{{ subtopic.name }}</td><td class="text-center">{{ subtopic.total }}</td><td class="text-center">{{ subtopic.correct }}</td><td class="text-center fw-bold">{{ subtopic.percentage }}%</td></tr>
+                                        <tr>
+                                            <td>{{ subtopic.name }}</td>
+                                            <td class="text-end">{{ subtopic.total }}</td>
+                                            <td class="text-end">{{ subtopic.correct }}</td>
+                                            <td class="text-end fw-bold">{{ subtopic.percentage }}%</td>
+                                        </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-            {% empty %}
-                 <div class="card shadow-sm"><div class="card-body"><p class="text-center p-3">You haven't answered any questions yet. <a href="{% url 'quiz_setup' %}">Start a quiz</a> to see your stats!</p></div></div>
             {% endfor %}
         {% else %}
-             <div class="card shadow-sm"><div class="card-body"><p class="text-center p-3">You haven't answered any questions yet. <a href="{% url 'quiz_setup' %}">Start a quiz</a> to see your stats!</p></div></div>
+             <div class="alert alert-info text-center">
+                 You haven't answered any questions yet. <a href="{% url 'quiz_setup' %}" class="alert-link">Start a quiz</a> to see your stats!
+             </div>
         {% endif %}
     </div>
+
+    <!-- Reset Modal (Safer confirmation) -->
+    <div class="modal fade" id="resetModal" tabindex="-1" aria-labelledby="resetModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title" id="resetModalLabel">Confirm Performance Reset</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            Are you sure you want to permanently reset all your performance data and flagged questions? <strong>This action cannot be undone.</strong>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <form action="{% url 'reset_performance' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Yes, Reset Everything</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
 {% endblock %}
 
-<!-- ============================================= -->
-<!-- START OF THE CORRECTED/RESTORED SCRIPT BLOCK -->
-<!-- ============================================= -->
 {% block scripts %}
-    <!-- Chart.js library and script -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js library and script (Updated to use dynamic colors) -->
+    <!-- Updated CDN link to the latest version 4 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const chartCanvas = document.getElementById('performanceChart');
             if (chartCanvas) {
                 const chartLabels = JSON.parse('{{ chart_labels|safe }}');
                 const chartData = JSON.parse('{{ chart_data|safe }}');
+
+                // Dynamic color based on theme (fetches the dynamic CSS variable)
+                const style = getComputedStyle(document.documentElement);
+                const primaryColor = style.getPropertyValue('--bs-primary').trim();
+                const bodyColor = style.getPropertyValue('--bs-body-color').trim();
+                const gridColor = style.getPropertyValue('--bs-border-color').trim();
+
                 new Chart(chartCanvas, {
-                    type: 'line', data: { labels: chartLabels, datasets: [{
-                        label: 'Daily Accuracy (%)', data: chartData, fill: true,
-                        borderColor: 'rgb(75, 192, 192)', backgroundColor: 'rgba(75, 192, 192, 0.1)', tension: 0.2
-                    }]}, options: { scales: { y: { beginAtZero: true, max: 100, ticks: {
-                        callback: function(value) { return value + '%' }
-                    }}}, plugins: { legend: { display: false }}}
+                    type: 'line',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [{
+                            label: 'Daily Accuracy (%)',
+                            data: chartData,
+                            fill: true,
+                            borderColor: primaryColor,
+                            backgroundColor: primaryColor + '20', // Adds slight transparency (hex alpha)
+                            tension: 0.3, // Smoother line
+                            pointBackgroundColor: primaryColor,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    callback: function(value) { return value + '%' },
+                                    color: bodyColor
+                                },
+                                grid: { color: gridColor }
+                            },
+                            x: {
+                                ticks: { color: bodyColor },
+                                grid: { display: false }
+                            }
+                        },
+                        plugins: { legend: { display: false } }
+                    }
                 });
             }
         });
     </script>
 {% endblock %}
-<!-- ============================================= -->
-<!-- END OF THE SCRIPT BLOCK -->
-<!-- ============================================= -->

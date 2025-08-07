@@ -4,10 +4,14 @@
 {% block title %}Login - BitePrep{% endblock %}
 
 {% block content %}
-    <div class="container" style="max-width: 500px;">
-        <div class="card shadow-sm">
+    <div class="container" style="max-width: 450px;">
+        <div class="card shadow-lg">
             <div class="card-body p-4 p-md-5">
-                <h2 class="card-title text-center mb-4">Log In to Your Account</h2>
+                <div class="text-center mb-4">
+                    <i class="bi bi-person-circle text-primary" style="font-size: 3rem;"></i>
+                    <h2 class="card-title mt-2">Log In</h2>
+                </div>
+
                 <form method="post">
                     {% csrf_token %}
                     {{ form|crispy }}
@@ -17,7 +21,8 @@
                 </form>
                 <div class="text-center mt-4">
                     <p class="mb-1"><a href="{% url 'password_reset' %}">Forgot Password?</a></p>
-                    <p class="mb-0">Don't have an account? <a href="{% url 'signup' %}">Sign Up</a></p>
+                    <hr>
+                    <p class="mb-0">Don't have an account? <a href="{% url 'signup' %}" class="fw-bold">Sign Up Here</a></p>
                 </div>
             </div>
         </div>
