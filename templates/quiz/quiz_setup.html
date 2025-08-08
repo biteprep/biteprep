@@ -59,12 +59,13 @@
                         <h4 class="mb-0"><span class="badge bg-light text-dark me-2">2</span> Configure Session</h4>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted">Choose your mode, length, and timer.</p>
+                        <p class="text-muted">Choose your mode, length, and challenges.</p>
 
                         <!-- Mode -->
                         <div class="mb-4">
                             <h6><i class="bi bi-toggles me-2"></i>Mode</h6>
-                            <div class="btn-group w-100" role="group">
+                            <!-- Added ID to the group for JS targeting -->
+                            <div class="btn-group w-100" role="group" id="quiz-mode-selector">
                                 <input type="radio" class="btn-check" name="quiz_mode" id="modeQuiz" value="quiz" checked>
                                 <label class="btn btn-outline-primary" for="modeQuiz">Quiz Mode (Feedback)</label>
                                 <input type="radio" class="btn-check" name="quiz_mode" id="modeTest" value="test">
@@ -84,22 +85,39 @@
                             </div>
                         </div>
 
-                        <!-- Timer -->
-                        <div>
-                            <h6><i class="bi bi-stopwatch me-2"></i>Timer (Optional)</h6>
-                            <div class="d-flex align-items-center">
-                                <div class="form-check form-switch me-3">
-                                    <input class="form-check-input" type="checkbox" role="switch" name="timer-toggle" id="timer-toggle">
-                                    <label class="form-check-label" for="timer-toggle">Enable</label>
+                        <div class="row">
+                            <!-- Timer -->
+                            <div class="col-sm-6">
+                                <h6><i class="bi bi-stopwatch me-2"></i>Timer (Optional)</h6>
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="form-check form-switch me-3">
+                                        <input class="form-check-input" type="checkbox" role="switch" name="timer-toggle" id="timer-toggle">
+                                        <label class="form-check-label" for="timer-toggle">Enable</label>
+                                    </div>
+                                    <input type="number" name="timer_minutes" id="timer-input" min="1" placeholder="Minutes" class="form-control" disabled>
                                 </div>
-                                <input type="number" name="timer_minutes" id="timer-input" min="1" placeholder="Minutes (e.g., 60)" class="form-control w-50" disabled>
                             </div>
-                        </div>
 
-                        <!-- Negative Marking (Feature seems disabled in backend logic provided, so visually hiding it) -->
-                        <div style="display: none;">
-                            <input class="form-check-input" type="checkbox" name="negative-marking-toggle" id="negative-marking-toggle">
-                            <select name="penalty_value" id="penalty-select" disabled><option value="0.25">-0.25</option></select>
+                            <!-- Negative Marking (Enabled) -->
+                            <div class="col-sm-6">
+                                <!-- Added tooltip explaining availability -->
+                                 <h6 data-bs-toggle="tooltip" data-bs-placement="top" title="Only available in Test Mode">
+                                    <i class="bi bi-dash-circle me-2"></i>Negative Marking
+                                </h6>
+                                <!-- Added ID to the wrapper for JS targeting -->
+                                <div class="d-flex align-items-center mb-3" id="negative-marking-wrapper">
+                                    <div class="form-check form-switch me-3">
+                                        <input class="form-check-input" type="checkbox" role="switch" name="negative-marking-toggle" id="negative-marking-toggle">
+                                        <label class="form-check-label" for="negative-marking-toggle">Enable</label>
+                                    </div>
+                                    <!-- Values represent the amount subtracted -->
+                                    <select name="penalty_value" id="penalty-select" class="form-select">
+                                        <option value="0.25">− 0.25</option>
+                                        <option value="0.50" selected>− 0.50</option>
+                                        <option value="1.00">− 1.00</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
 
                     </div>
@@ -156,27 +174,81 @@
     {% block scripts %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Logic for custom question count
+            // Initialize Bootstrap tooltips (for the "Test Mode Only" hint)
+            if (typeof bootstrap !== 'undefined') {
+                var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+                var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl)
+                });
+            }
+
+            // --- Configuration Interactivity ---
+
+            // 1. Custom Question Count
             const countSelect = document.getElementById('question_count_select');
             const countInput = document.getElementById('question-count-input');
-            countSelect.addEventListener('change', function() {
-                if (this.value === 'custom') {
-                    countInput.style.display = 'block';
-                    countInput.focus();
-                } else {
-                    countInput.style.display = 'none';
-                }
-            });
+            if (countSelect) {
+                countSelect.addEventListener('change', function() {
+                    countInput.style.display = (this.value === 'custom') ? 'block' : 'none';
+                    if (this.value === 'custom') countInput.focus();
+                });
+            }
 
-            // Logic for timer toggle
+            // 2. Timer Toggle
             const timerToggle = document.getElementById('timer-toggle');
             const timerInput = document.getElementById('timer-input');
-            timerToggle.addEventListener('change', function() {
-                timerInput.disabled = !this.checked;
-                if (this.checked) {
-                    timerInput.focus();
+            if (timerToggle) {
+                timerToggle.addEventListener('change', function() {
+                    timerInput.disabled = !this.checked;
+                    if (this.checked) timerInput.focus();
+                });
+            }
+
+            // 3. Negative Marking Toggle
+            const penaltyToggle = document.getElementById('negative-marking-toggle');
+            const penaltySelect = document.getElementById('penalty-select');
+             if (penaltyToggle) {
+                penaltyToggle.addEventListener('change', function() {
+                    // The select dropdown state depends on the toggle state AND the mode
+                    if (document.getElementById('modeTest').checked) {
+                         penaltySelect.disabled = !this.checked;
+                    }
+                });
+            }
+
+            // 4. Mode Selector (Impacts Negative Marking Availability)
+            const modeSelector = document.getElementById('quiz-mode-selector');
+            const penaltyWrapper = document.getElementById('negative-marking-wrapper');
+            const modeQuiz = document.getElementById('modeQuiz');
+
+            function updatePenaltyAvailability() {
+                const isQuizMode = modeQuiz.checked;
+
+                if (isQuizMode) {
+                    // Disable and visually fade in Quiz Mode
+                    penaltyWrapper.style.opacity = '0.5';
+                    penaltyWrapper.setAttribute('aria-disabled', 'true');
+                    penaltyToggle.disabled = true;
+                    penaltySelect.disabled = true;
+                    penaltyToggle.checked = false; // Uncheck if switching back from Test Mode
+                } else {
+                    // Enable in Test Mode
+                    penaltyWrapper.style.opacity = '1';
+                    penaltyWrapper.removeAttribute('aria-disabled');
+                    penaltyToggle.disabled = false;
+                    // The select dropdown state depends on the toggle state
+                    penaltySelect.disabled = !penaltyToggle.checked;
                 }
-            });
+            }
+
+            if (modeSelector) {
+                modeSelector.addEventListener('change', updatePenaltyAvailability);
+            }
+            // Initial check on page load
+            updatePenaltyAvailability();
+
+
+            // --- Topic Selection Logic ---
 
             // Logic for "Select All" topics
             document.querySelectorAll('.select-all-topic').forEach(function(selectAll) {

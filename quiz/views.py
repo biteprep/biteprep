@@ -4,6 +4,8 @@ import random
 import stripe
 import json
 from datetime import date, datetime, timedelta
+# Import Decimal for precise score calculations
+from decimal import Decimal, ROUND_HALF_UP
 from django.shortcuts import render, redirect, HttpResponse
 from django.conf import settings
 from django.http import JsonResponse
@@ -39,7 +41,7 @@ def contact_page(request):
 
 # Assuming template names based on previous context
 def terms_page(request):
-    return render(request, 'quiz/terms_and_conditions.html') 
+    return render(request, 'quiz/terms_and_conditions.html')
 
 def privacy_page(request):
     return render(request, 'quiz/privacy_policy.html')
@@ -51,23 +53,40 @@ def cookie_page(request):
 def membership_page(request):
     return render(request, 'quiz/membership_page.html')
 
+
 @login_required
 def dashboard(request):
     user_answers = UserAnswer.objects.filter(user=request.user)
     total_answered = user_answers.count()
     correct_answered = user_answers.filter(is_correct=True).count()
-    overall_percentage = (correct_answered / total_answered * 100) if total_answered > 0 else 0
+
+    # Use Decimal for percentage calculation for consistency
+    if total_answered > 0:
+        overall_percentage = (Decimal(correct_answered) / Decimal(total_answered)) * 100
+    else:
+        overall_percentage = Decimal(0)
+
     thirty_days_ago = timezone.now() - timedelta(days=30)
     daily_performance = (UserAnswer.objects.filter(user=request.user, timestamp__gte=thirty_days_ago)
         .annotate(date=TruncDate('timestamp')).values('date')
         .annotate(daily_total=Count('id'), daily_correct=Count('id', filter=Q(is_correct=True)))
         .order_by('date'))
+
     chart_labels = [d['date'].strftime('%b %d') for d in daily_performance]
-    chart_data = [round(d['daily_correct'] / d['daily_total'] * 100) if d['daily_total'] > 0 else 0 for d in daily_performance]
+    # Calculate percentages using Decimal and convert to float for Chart.js
+    chart_data = []
+    for d in daily_performance:
+        if d['daily_total'] > 0:
+            perc = (Decimal(d['daily_correct']) / Decimal(d['daily_total'])) * 100
+            chart_data.append(float(perc.quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)))
+        else:
+            chart_data.append(0.0)
+
     subtopic_performance = (UserAnswer.objects.filter(user=request.user)
         .values('question__subtopic__topic__name', 'question__subtopic__name')
         .annotate(total=Count('id'), correct=Count('id', filter=Q(is_correct=True)))
         .order_by('question__subtopic__topic__name', 'question__subtopic__name'))
+
     topic_stats = {}
     for item in subtopic_performance:
         topic_name = item['question__subtopic__topic__name']
@@ -75,14 +94,22 @@ def dashboard(request):
             topic_stats[topic_name] = {'total': 0, 'correct': 0, 'subtopics': []}
         topic_stats[topic_name]['total'] += item['total']
         topic_stats[topic_name]['correct'] += item['correct']
-        sub_perc = (item['correct'] / item['total'] * 100) if item['total'] > 0 else 0
-        topic_stats[topic_name]['subtopics'].append({'name': item['question__subtopic__name'], 'total': item['total'], 'correct': item['correct'], 'percentage': round(sub_perc, 1)})
+        sub_perc = (Decimal(item['correct']) / Decimal(item['total']) * 100) if item['total'] > 0 else Decimal(0)
+        topic_stats[topic_name]['subtopics'].append({
+            'name': item['question__subtopic__name'],
+            'total': item['total'],
+            'correct': item['correct'],
+            'percentage': sub_perc.quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)
+        })
+
     for topic_name, data in topic_stats.items():
-        data['percentage'] = round((data['correct'] / data['total'] * 100) if data['total'] > 0 else 0, 1)
+        data['percentage'] = (Decimal(data['correct']) / Decimal(data['total']) * 100) if data['total'] > 0 else Decimal(0)
+        data['percentage'] = data['percentage'].quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)
+
     context = {
         'total_answered': total_answered,
         'correct_answered': correct_answered,
-        'overall_percentage': round(overall_percentage, 1),
+        'overall_percentage': overall_percentage.quantize(Decimal('0.1'), rounding=ROUND_HALF_UP),
         'topic_stats': topic_stats,
         'chart_labels': json.dumps(chart_labels),
         'chart_data': json.dumps(chart_data),
@@ -94,8 +121,8 @@ def dashboard(request):
 @login_required
 def quiz_setup(request):
     if request.method == 'POST':
-        # Assuming Profile model is linked via OneToOneField named 'profile'
-        profile = request.user.profile 
+        # ... (Subscription check and question filtering remains the same) ...
+        profile = request.user.profile
         is_active_subscription = profile.membership_expiry_date and profile.membership_expiry_date >= date.today()
         if not (profile.membership == 'Free' or is_active_subscription):
             messages.warning(request, "Your subscription has expired. Please renew your plan.")
@@ -130,10 +157,16 @@ def quiz_setup(request):
             if profile.membership != 'Free':
                  messages.warning(request, f"To ensure stability, the quiz has been limited to the maximum of {MAX_QUESTIONS_PER_QUIZ} questions.")
             question_ids = question_ids[:MAX_QUESTIONS_PER_QUIZ]
+
+        # Initialize quiz context
+        quiz_mode = request.POST.get('quiz_mode', 'quiz')
         quiz_context = {
             'question_ids': question_ids, 'total_questions': len(question_ids),
-            'mode': request.POST.get('quiz_mode', 'quiz'), 'user_answers': {},
+            'mode': quiz_mode, 'user_answers': {},
+            'penalty_value': 0.0 # Initialize penalty
         }
+
+        # Handle Timer
         if 'timer-toggle' in request.POST:
             try:
                 timer_minutes = int(request.POST.get('timer_minutes', 0))
@@ -141,8 +174,21 @@ def quiz_setup(request):
                     quiz_context['start_time'] = timezone.now().isoformat()
                     quiz_context['duration_seconds'] = timer_minutes * 60
             except (ValueError, TypeError): pass
+
+        # Handle Negative Marking (Only if Test Mode)
+        if quiz_mode == 'test' and 'negative-marking-toggle' in request.POST:
+            try:
+                # Store as float for easy session serialization; convert to Decimal during calculation.
+                penalty = float(request.POST.get('penalty_value', 0.0))
+                if penalty > 0:
+                    quiz_context['penalty_value'] = penalty
+            except (ValueError, TypeError):
+                messages.warning(request, "Invalid penalty value ignored.")
+                pass # Keep default 0.0 if invalid value
+
         request.session['quiz_context'] = quiz_context
         return redirect('start_quiz')
+
     categories = Category.objects.prefetch_related('topics__subtopics').all()
     context = {'categories': categories}
     return render(request, 'quiz/quiz_setup.html', context)
@@ -162,13 +208,13 @@ def quiz_player(request, question_index):
     if not quiz_context:
         messages.error(request, "Quiz session not found. Please start a new quiz.")
         return redirect('quiz_setup')
-    
+
     question_ids = quiz_context.get('question_ids', [])
     total_questions = len(question_ids) # Define total_questions early
 
     if not (0 < question_index <= total_questions):
         return redirect('quiz_results')
-    
+
     question_id = question_ids[question_index - 1]
     quiz_mode = quiz_context.get('mode', 'quiz')
     is_feedback_mode = False
@@ -180,15 +226,15 @@ def quiz_player(request, question_index):
         user_answers = quiz_context.get('user_answers', {})
         current_answer_info = user_answers.get(str(question_id), {}).copy()
         is_submitted_now = current_answer_info.get('is_submitted', False)
-        
+
         if quiz_mode == 'quiz' and action == 'submit_answer':
             is_submitted_now = True
-            
+
         if submitted_answer_id_str:
             try:
                 answer = Answer.objects.get(id=int(submitted_answer_id_str), question_id=question_id)
-                quiz_context['user_answers'][str(question_id)] = { 
-                    'answer_id': answer.id, 
+                quiz_context['user_answers'][str(question_id)] = {
+                    'answer_id': answer.id,
                     'is_correct': answer.is_correct,
                     'is_submitted': is_submitted_now
                 }
@@ -199,9 +245,9 @@ def quiz_player(request, question_index):
         if action == 'toggle_flag':
             flag, created = FlaggedQuestion.objects.get_or_create(user=request.user, question_id=question_id)
             if not created: flag.delete()
-            
+
         request.session.modified = True
-        
+
         navigate_to_index_str = request.POST.get('navigate_to')
         if navigate_to_index_str:
             try:
@@ -210,26 +256,23 @@ def quiz_player(request, question_index):
                     return redirect('quiz_player', question_index=target_index)
             except (ValueError, TypeError):
                 pass
-            
+
         if action == 'prev' and question_index > 1: return redirect('quiz_player', question_index=question_index - 1)
         if action == 'next' and question_index < total_questions: return redirect('quiz_player', question_index=question_index + 1)
         if action == 'finish': return redirect('quiz_results')
 
-    # --- FIX START: Calculate Progress Percentage ---
-    # This calculation resolves the IDE CSS validation errors by moving logic out of the template.
+    # Calculate Progress Percentage
     if total_questions > 0:
-        # Use the current index for the calculation.
         progress_percentage = round((question_index / total_questions) * 100)
     else:
         progress_percentage = 0
-    # --- FIX END ---
 
     # Prepare context data
     question = Question.objects.prefetch_related('answers').get(pk=question_id)
     user_answers = quiz_context.get('user_answers', {})
     user_answer_info = user_answers.get(str(question_id))
     seconds_remaining = None
-    
+
     if 'start_time' in quiz_context:
         start_time = datetime.fromisoformat(quiz_context['start_time'])
         duration = timedelta(seconds=quiz_context.get('duration_seconds', 0))
@@ -238,10 +281,10 @@ def quiz_player(request, question_index):
         if seconds_remaining <= 0:
             messages.info(request, "Time is up! The quiz has been automatically submitted.")
             return redirect('quiz_results')
-        
+
     user_flagged_ids = set(FlaggedQuestion.objects.filter(user=request.user, question_id__in=question_ids).values_list('question_id', flat=True))
     navigator_items = []
-    
+
     for i, q_id in enumerate(question_ids):
         idx = i + 1
         answer_info = user_answers.get(str(q_id))
@@ -253,14 +296,14 @@ def quiz_player(request, question_index):
                 if answer_info.get('is_submitted'):
                      btn_class = 'btn-success' if answer_info.get('is_correct') else 'btn-danger'
                 else:
-                    btn_class = 'btn-primary' 
+                    btn_class = 'btn-primary'
         if idx == question_index:
             btn_class = btn_class.replace('btn-outline-', 'btn-') + ' active'
         navigator_items.append({'index': idx, 'class': btn_class, 'is_flagged': q_id in user_flagged_ids})
-        
+
     if quiz_mode == 'quiz' and user_answer_info and user_answer_info.get('is_submitted'):
         is_feedback_mode = True
-    
+
     # Safely fetch user answer object
     user_answer_obj = None
     if is_feedback_mode and user_answer_info and user_answer_info.get('answer_id'):
@@ -273,7 +316,7 @@ def quiz_player(request, question_index):
         'question': question,
         'question_index': question_index,
         'total_questions': total_questions,
-        'progress_percentage': progress_percentage, # Added to context
+        'progress_percentage': progress_percentage,
         'quiz_context': quiz_context,
         'is_feedback_mode': is_feedback_mode,
         'user_selected_answer_id': user_answer_info.get('answer_id') if user_answer_info else None,
@@ -282,47 +325,97 @@ def quiz_player(request, question_index):
         'flagged_questions': user_flagged_ids,
         'seconds_remaining': seconds_remaining,
         'navigator_items': navigator_items,
+        # Add penalty info for display in the player header
+        'penalty_value': quiz_context.get('penalty_value', 0.0),
     }
     return render(request, 'quiz/quiz_player.html', context)
+
 
 @login_required
 def quiz_results(request):
     quiz_context = request.session.pop('quiz_context', None)
     if not quiz_context: return redirect('home')
+
     user_answers_dict = quiz_context.get('user_answers', {})
     question_ids = quiz_context.get('question_ids', [])
+    total_questions = len(question_ids)
+
+    # Get penalty value and convert to Decimal for precision
+    try:
+        penalty_value = Decimal(str(quiz_context.get('penalty_value', 0.0)))
+    except Exception:
+        penalty_value = Decimal(0)
+
+
     questions_in_quiz = Question.objects.filter(pk__in=question_ids).prefetch_related('answers')
     question_map = {q.id: q for q in questions_in_quiz}
-    final_score = 0
+
+    # Initialize counters
+    correct_count = 0
+    incorrect_count = 0
     review_data = []
+
     for q_id in question_ids:
         question = question_map.get(q_id)
         if question:
             answer_info = user_answers_dict.get(str(q_id))
             user_answer_obj = None
+            is_correct = False # Default assumption
+
             # Check if an answer was submitted (even if no option was selected in Quiz mode)
             if answer_info:
                 if answer_info.get('answer_id'):
                     user_answer_obj = next((a for a in question.answers.all() if a.id == answer_info['answer_id']), None)
-                
-                # Determine correctness (False if no answer selected but submitted)
+
+                # Determine correctness
                 is_correct = answer_info.get('is_correct', False)
-                
+
                 # Update or create UserAnswer record
                 UserAnswer.objects.update_or_create(
-                    user=request.user, 
-                    question=question, 
+                    user=request.user,
+                    question=question,
                     defaults={'is_correct': is_correct}
                 )
-                
+
+                # Tally counts
                 if is_correct:
-                    final_score += 1
-                    
+                    correct_count += 1
+                else:
+                    incorrect_count += 1
+
+            # Note: Unanswered questions in Test Mode are implicitly incorrect if penalty is active.
+            elif quiz_context.get('mode') == 'test':
+                 incorrect_count += 1 # Treat unanswered in test mode as incorrect for scoring
+
             review_data.append({'question': question, 'user_answer': user_answer_obj})
 
-    total_questions = len(question_ids)
-    percentage_score = (final_score / total_questions * 100) if total_questions > 0 else 0
-    context = {'final_score': final_score, 'total_questions': total_questions, 'percentage_score': round(percentage_score, 2), 'review_data': review_data}
+    # --- Score Calculation (Updated for Negative Marking) ---
+
+    total_penalty = incorrect_count * penalty_value
+    final_score = Decimal(correct_count) - total_penalty
+
+    # Ensure score doesn't drop below zero
+    final_score = max(Decimal(0), final_score)
+
+    # Calculate percentage
+    if total_questions > 0:
+        percentage_score = (final_score / Decimal(total_questions)) * 100
+    else:
+        percentage_score = Decimal(0)
+
+    # Format for display using quantize
+    context = {
+        'final_score': final_score.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP),
+        'total_questions': total_questions,
+        'percentage_score': percentage_score.quantize(Decimal('0.1'), rounding=ROUND_HALF_UP),
+        'review_data': review_data,
+        # Add penalty context for display
+        'penalty_applied': penalty_value > 0,
+        'penalty_value': penalty_value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP),
+        'total_penalty': total_penalty.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP),
+        'correct_count': correct_count,
+        'incorrect_count': incorrect_count,
+    }
     return render(request, 'quiz/results.html', context)
 
 @login_required
@@ -340,7 +433,8 @@ def start_incorrect_quiz(request):
         messages.success(request, "Great job! You have no incorrect answers to review.")
         return redirect('dashboard')
     random.shuffle(question_ids)
-    request.session['quiz_context'] = {'question_ids': question_ids, 'total_questions': len(question_ids), 'mode': 'quiz', 'user_answers': {}}
+    # Ensure penalty is reset for review modes
+    request.session['quiz_context'] = {'question_ids': question_ids, 'total_questions': len(question_ids), 'mode': 'quiz', 'user_answers': {}, 'penalty_value': 0.0}
     return redirect('start_quiz')
 
 @login_required
@@ -350,9 +444,11 @@ def start_flagged_quiz(request):
         messages.info(request, "You have not flagged any questions for review.")
         return redirect('dashboard')
     random.shuffle(question_ids)
-    request.session['quiz_context'] = {'question_ids': question_ids, 'total_questions': len(question_ids), 'mode': 'quiz', 'user_answers': {}}
+    # Ensure penalty is reset for review modes
+    request.session['quiz_context'] = {'question_ids': question_ids, 'total_questions': len(question_ids), 'mode': 'quiz', 'user_answers': {}, 'penalty_value': 0.0}
     return redirect('start_quiz')
 
+# ... (report_question, create_checkout_session, success_page, cancel_page, stripe_webhook remain the same) ...
 @login_required
 @csrf_exempt
 def report_question(request):
@@ -367,8 +463,8 @@ def report_question(request):
 
             question = Question.objects.get(pk=question_id)
             QuestionReport.objects.update_or_create(
-                user=request.user, 
-                question=question, 
+                user=request.user,
+                question=question,
                 defaults={'reason': reason, 'status': 'OPEN'}
             )
             return JsonResponse({'status': 'success', 'message': 'Report submitted successfully!'})
@@ -410,13 +506,13 @@ def create_checkout_session(request):
             return redirect('membership_page')
     return redirect('membership_page')
 
-def success_page(request): 
+def success_page(request):
     return render(request, 'quiz/payment_successful.html')
 
-def cancel_page(request): 
+def cancel_page(request):
     return render(request, 'quiz/payment_canceled.html')
 
 @csrf_exempt
-def stripe_webhook(request): 
+def stripe_webhook(request):
     # Webhook handling logic should be implemented here
     return HttpResponse(status=200)

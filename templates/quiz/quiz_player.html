@@ -15,7 +15,13 @@
                 <!-- Header and Timer -->
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="fw-bold">Question {{ question_index }} of {{ total_questions }}</span>
+                        <span class="fw-bold">
+                            Question {{ question_index }} of {{ total_questions }}
+                            <!-- FEATURE: Show active penalty badge -->
+                            {% if penalty_value > 0.0 %}
+                                <span class="badge bg-warning text-dark ms-2" title="Negative Marking Active">Penalty: -{{ penalty_value }}</span>
+                            {% endif %}
+                        </span>
                         {% if seconds_remaining is not None %}
                             <!-- Enhanced Timer Display -->
                             <span id="timer" class="badge bg-danger fs-6 px-3 py-2"><i class="bi bi-stopwatch me-2"></i>--:--</span>
@@ -26,7 +32,10 @@
                 <!-- Progress Bar -->
                 {% if total_questions > 1 %}
                 <div class="progress" style="height: 6px; border-top-left-radius: 0; border-top-right-radius: 0;">
-                    <div class="progress-bar" role="progressbar" style="width: {{ progress_percentage }}%;" aria-valuenow="{{ progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    <!-- FIX for Linter: Use CSS Custom Property to hold the dynamic width -->
+                    <div class="progress-bar" role="progressbar"
+                         style="--progress-width: {{ progress_percentage }}%; width: var(--progress-width);"
+                         aria-valuenow="{{ progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
                 </div>
                 {% endif %}
 
@@ -249,8 +258,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('report-reason').value = '';
                     setTimeout(() => {
                         const modalEl = document.getElementById('reportModal');
-                        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-                        if (modal) { modal.hide(); }
+                        // Ensure bootstrap is defined before using it
+                        if (typeof bootstrap !== 'undefined') {
+                            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                            if (modal) { modal.hide(); }
+                        }
                         feedbackEl.textContent = '';
                         reportBtn.disabled = false;
                     }, 2000);

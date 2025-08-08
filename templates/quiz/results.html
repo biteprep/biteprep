@@ -7,17 +7,57 @@
     <!-- Results Summary Card -->
     <div class="card shadow-lg text-center mb-5 border-primary">
         <div class="card-body p-5">
-            <h1 class="card-title display-4 mb-3">Quiz Complete!</h1>
-            <p class="lead">Your performance summary:</p>
-            <div class="d-flex justify-content-center align-items-center mb-4">
-                <div class="display-1 fw-bold text-primary me-4">{{ percentage_score }}%</div>
-                <div class="text-start">
-                    <p class="fs-4 mb-0">Score: <strong>{{ final_score }}</strong> / {{ total_questions }}</p>
-                </div>
-            </div>
+            <h1 class="card-title display-4 mb-4">Quiz Complete!</h1>
 
-            <a href="{% url 'quiz_setup' %}" class="btn btn-primary btn-lg mt-3 me-2">Start New Quiz</a>
-            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-lg mt-3">Back to Dashboard</a>
+            <!-- Standard Display (No Penalty or Quiz Mode) -->
+            {% if not penalty_applied %}
+                <p class="lead">Your performance summary:</p>
+                <div class="d-flex justify-content-center align-items-center mb-4">
+                    <div class="display-1 fw-bold text-primary me-5">{{ percentage_score }}%</div>
+                    <div class="text-start fs-5">
+                        <p class="mb-1">Final Score: <strong>{{ final_score|floatformat:0 }}</strong> / {{ total_questions }}</p>
+                        <p class="mb-1 text-success">Correct: <strong>{{ correct_count }}</strong></p>
+                        <p class="mb-0 text-danger">Incorrect: <strong>{{ incorrect_count }}</strong></p>
+                    </div>
+                </div>
+
+            <!-- Detailed Display (With Penalty in Test Mode) -->
+            {% else %}
+                <p class="lead">Performance summary with negative marking ({{ penalty_value }} per incorrect answer):</p>
+                <div class="display-1 fw-bold text-primary mb-4">{{ percentage_score }}%</div>
+
+                <div class="row justify-content-center mb-4">
+                    <div class="col-md-8">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th colspan="2" class="text-center">Score Breakdown</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="text-start">Correct Answers ({{ correct_count }})</td>
+                                    <td class="text-end text-success">+ {{ correct_count|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="text-start">Incorrect Answers (Penalty)</td>
+                                    <td class="text-end text-danger">− {{ total_penalty }}</td>
+                                </tr>
+                                <tr class="table-primary fw-bold">
+                                    <td class="text-start">Final Adjusted Score</td>
+                                    <td class="text-end">{{ final_score }} / {{ total_questions }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endif %}
+
+
+            <div class="mt-5">
+                <a href="{% url 'quiz_setup' %}" class="btn btn-primary btn-lg mt-3 me-2">Start New Quiz</a>
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-lg mt-3">Back to Dashboard</a>
+            </div>
         </div>
     </div>
 
@@ -26,13 +66,27 @@
     {% for item in review_data %}
         <div class="card mb-4">
             <!-- Question Header with Status -->
-            <div class="card-header d-flex justify-content-between align-items-center
-                {% if item.user_answer.is_correct %} bg-success-subtle text-success-emphasis {% else %} bg-danger-subtle text-danger-emphasis {% endif %}">
-                <strong class="fs-5">Question {{ forloop.counter }}</strong>
-                <span class="badge fs-6 {% if item.user_answer.is_correct %} bg-success {% else %} bg-danger {% endif %}">
-                    {% if item.user_answer.is_correct %}<i class="bi bi-check-lg me-1"></i> Correct {% else %}<i class="bi bi-x-lg me-1"></i> Incorrect {% endif %}
-                </span>
-            </div>
+            <!-- We rely on the UserAnswer record for correctness in the review if it exists -->
+            {% if item.user_answer %}
+                {% with correctness=item.user_answer.is_correct %}
+                    <div class="card-header d-flex justify-content-between align-items-center
+                        {% if correctness %} bg-success-subtle text-success-emphasis {% else %} bg-danger-subtle text-danger-emphasis {% endif %}">
+                        <strong class="fs-5">Question {{ forloop.counter }}</strong>
+                        <span class="badge fs-6 {% if correctness %} bg-success {% else %} bg-danger {% endif %}">
+                            {% if correctness %}<i class="bi bi-check-lg me-1"></i> Correct {% else %}<i class="bi bi-x-lg me-1"></i> Incorrect {% endif %}
+                        </span>
+                    </div>
+                {% endwith %}
+            {% else %}
+                <!-- Handle unanswered questions (usually in Test Mode) -->
+                 <div class="card-header d-flex justify-content-between align-items-center bg-secondary-subtle text-secondary-emphasis">
+                        <strong class="fs-5">Question {{ forloop.counter }}</strong>
+                        <span class="badge fs-6 bg-secondary">
+                           <i class="bi bi-dash-lg me-1"></i> Unanswered
+                        </span>
+                    </div>
+            {% endif %}
+
 
             <!-- Question Body -->
             <div class="card-body">
@@ -49,13 +103,13 @@
                     {% for answer in item.question.answers.all %}
                         <li class="list-group-item d-flex justify-content-between align-items-center
                             {% if answer.is_correct %}list-group-item-success{% endif %}
-                            {% if item.user_answer.id == answer.id and not item.user_answer.is_correct %}list-group-item-danger{% endif %}
+                            {% if item.user_answer and item.user_answer.id == answer.id and not item.user_answer.is_correct %}list-group-item-danger{% endif %}
                         ">
                             <span>
                                 <!-- Added icons for clarity -->
                                  {% if answer.is_correct %}
                                     <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                {% elif item.user_answer.id == answer.id %}
+                                {% elif item.user_answer and item.user_answer.id == answer.id %}
                                      <i class="bi bi-x-circle-fill text-danger me-2"></i>
                                 {% else %}
                                      <i class="bi bi-circle text-muted me-2"></i>
@@ -63,7 +117,7 @@
                                 {{ answer.answer_text }}
                             </span>
 
-                            {% if item.user_answer.id == answer.id %}
+                            {% if item.user_answer and item.user_answer.id == answer.id %}
                                 <span class="badge bg-primary">Your Answer</span>
                             {% endif %}
                         </li>
