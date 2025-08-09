@@ -23,8 +23,8 @@ pillow==11.3.0
 stripe==12.3.0
 
 # Security Packages
-django-otp==1.6.1  # CORRECTED VERSION
-django-admin-honeypot==1.2.0
+django-otp==1.6.1
+django-admin-honeypot==1.1.0  # CORRECTED VERSION
 qrcode==7.4.2
 
 # Admin Enhancements & Auditing
