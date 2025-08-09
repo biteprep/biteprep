@@ -13,15 +13,16 @@ otp_admin_site = OTPAdminSite()
 for model, model_admin in site._registry.items():
     otp_admin_site.register(model, model_admin.__class__)
 
-SECRET_ADMIN_PATH = 'manage-biteprep-secure-access/'
+# SECRET_ADMIN_PATH is now loaded from settings.SECRET_ADMIN_PATH
 
 urlpatterns = [
     path('admin/', include('admin_honeypot.urls', namespace='admin_honeypot')),
-    path(SECRET_ADMIN_PATH, otp_admin_site.urls),
+    # Use the dynamic path loaded from settings/environment variables
+    path(settings.SECRET_ADMIN_PATH, otp_admin_site.urls),
     path('impersonate/', include('impersonate.urls')),
 
     # --- FIX START: Explicitly define auth routes to bypass admin context hijacking ---
-    
+     
     # Login/Logout (Ensuring correct templates)
     path('accounts/login/',
         auth_views.LoginView.as_view(
@@ -68,7 +69,7 @@ urlpatterns = [
             template_name='registration/password_reset_complete.html'
         ),
         name='password_reset_complete'),
-        
+         
     # --- FIX END ---
 
     # Note: We no longer need include('django.contrib.auth.urls') as all paths are defined above.
@@ -77,8 +78,13 @@ urlpatterns = [
     path('', include('quiz.urls')),
 ]
 
+# Serve media files locally ONLY if DEBUG is True AND we are not configured to use Cloud Storage.
+# In production (DEBUG=False), media files should be served by the cloud provider (S3/Spaces).
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Check if the default storage backend is FileSystemStorage (local)
+    is_local_storage = settings.STORAGES.get("default", {}).get("BACKEND") == "django.core.files.storage.FileSystemStorage"
+    if is_local_storage:
+        urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 otp_admin_site.site_header = "BitePrep Administration Console"
 otp_admin_site.site_title = "BitePrep Admin"

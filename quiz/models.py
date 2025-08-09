@@ -4,6 +4,7 @@ from django.db import models
 from django.contrib.auth.models import User
 # Import HistoricalRecords
 from simple_history.models import HistoricalRecords
+from django.utils.text import Truncator # Import Truncator
 
 # Model for the main subject categories (e.g., Preclinical, Clinical)
 class Category(models.Model):
@@ -12,7 +13,7 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
-    
+     
     class Meta:
         verbose_name_plural = "Categories"
 
@@ -46,7 +47,8 @@ class Question(models.Model):
     history = HistoricalRecords() # Add History Tracking
 
     def __str__(self):
-        return self.question_text[:50] + "..."
+        # Use Truncator for cleaner representation
+        return Truncator(self.question_text).chars(50)
 
 
 # Model for the answer options for a given question
@@ -61,11 +63,12 @@ class Answer(models.Model):
         return f"Answer for Q: {self.question.id} | Correct: {self.is_correct}"
 
 
-# Model to track user performance (Transactional data, history usually not needed)
+# Model to track user performance (Transactional data)
 class UserAnswer(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     is_correct = models.BooleanField()
+    # auto_now=True updates the timestamp every time the object is saved (useful for tracking latest attempts)
     timestamp = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -75,6 +78,7 @@ class UserAnswer(models.Model):
         return f"{self.user.username}'s answer to Q:{self.question.id} is {'Correct' if self.is_correct else 'Incorrect'}"
 
 
+# (QuestionReport, ContactInquiry, FlaggedQuestion models remain the same as original)
 # Model for question reports
 class QuestionReport(models.Model):
     REPORT_STATUS_CHOICES = [
@@ -82,7 +86,7 @@ class QuestionReport(models.Model):
         ('REVIEWING', 'Under Review'),
         ('RESOLVED', 'Resolved'),
     ]
-    
+     
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='reports')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     reason = models.TextField(help_text="User's reason for reporting the question.")
@@ -115,12 +119,12 @@ class ContactInquiry(models.Model):
 
     def __str__(self):
         return f"Inquiry from {self.name} re: {self.subject}"
-    
+     
     class Meta:
         verbose_name_plural = "Contact Inquiries"
 
 
-# Model to permanently store user's flagged questions (Transactional data, history usually not needed)
+# Model to permanently store user's flagged questions (Transactional data)
 class FlaggedQuestion(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)

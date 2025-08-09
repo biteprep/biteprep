@@ -1,27 +1,50 @@
+# requirements.txt
+# NOTE: Versions are pinned for production stability. Ensure these match your local environment (use `pip freeze`).
+
+# Core Dependencies
 asgiref==3.9.1
+Django==5.2.4
+dj-database-url==3.0.1
+python-dotenv==1.1.1
+sqlparse==0.5.3
+
+# Deployment & Serving
+gunicorn==23.0.0
+whitenoise==6.9.0
+psycopg2-binary==2.9.10 # Required for PostgreSQL databases (common in production)
+
+# Forms & UI
+crispy-bootstrap5==2025.6
+django-crispy-forms==2.4
+
+# Media Handling
+pillow==11.3.0 # For image processing
+
+# Payments
+stripe==12.3.0
+
+# Security Packages
+django-otp==1.1.7
+django-admin-honeypot==1.2.0 # Fixed typo
+qrcode==7.4.2
+
+# Admin Enhancements & Auditing
+django-simple-history==3.6.1
+django-impersonate==1.9.2
+django-admin-rangefilter==0.11.2
+
+# Cloud Storage (NEW)
+django-storages==1.14.3
+boto3==1.34.146 # Required for S3 compatible storage (e.g., DigitalOcean Spaces, AWS S3)
+botocore==1.34.146 # Dependency of boto3
+
+# Utilities & Compatibility
 certifi==2025.7.14
 charset-normalizer==3.4.2
-crispy-bootstrap5==2025.6
-dj-database-url==3.0.1
-Django==5.2.4
-django-crispy-forms==2.4
-gunicorn==23.0.0
 idna==3.10
 packaging==25.0
-pillow==11.3.0
-psycopg2-binary==2.9.10
-python-dotenv==1.1.1
 requests==2.32.4
-sqlparse==0.5.3
-stripe==12.3.0
 typing_extensions==4.14.1
 urllib3==2.5.0
-whitenoise==6.9.0
-# Security Packages
-django-otp>=1.1.0
-django-admin-honeypot1>=1.2.0
-qrcode>=7.3.0
-# New Admin Enhancements
-django-simple-history>=3.0.0
-django-impersonate>=1.7.0
-django-admin-rangefilter>=0.10.0
+jmespath==1.0.1
+s3transfer==0.10.1

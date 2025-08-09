@@ -3,7 +3,9 @@
 import random
 import stripe
 import json
+# Ensure datetime and timezone are imported correctly
 from datetime import date, datetime, timedelta
+from django.utils import timezone
 # Import Decimal for precise score calculations
 from decimal import Decimal, ROUND_HALF_UP
 from django.shortcuts import render, redirect, HttpResponse
@@ -15,11 +17,23 @@ from django.db.models import Count, Q
 from django.db.models.functions import TruncDate
 from django.contrib import messages
 from django.urls import reverse
-from django.utils import timezone
 from .models import Category, Question, Answer, UserAnswer, FlaggedQuestion, QuestionReport
 from .forms import ContactForm
+# Import Profile model for webhook processing
+# We use a try-except block just in case of initialization issues, though typically not needed here.
+try:
+    from users.models import Profile
+except ImportError:
+    Profile = None
+
+import logging
+
+# Set up logging (Configured in settings.py)
+logger = logging.getLogger(__name__)
 
 MAX_QUESTIONS_PER_QUIZ = 500
+
+# (landing_page, contact_page, terms_page, privacy_page, cookie_page, membership_page remain the same)
 
 def landing_page(request):
     return render(request, 'quiz/landing_page.html')
@@ -56,6 +70,7 @@ def membership_page(request):
 
 @login_required
 def dashboard(request):
+    # (dashboard implementation remains the same as original)
     user_answers = UserAnswer.objects.filter(user=request.user)
     total_answered = user_answers.count()
     correct_answered = user_answers.filter(is_correct=True).count()
@@ -120,6 +135,7 @@ def dashboard(request):
 
 @login_required
 def quiz_setup(request):
+    # (quiz_setup implementation remains the same as original)
     if request.method == 'POST':
         # ... (Subscription check and question filtering remains the same) ...
         profile = request.user.profile
@@ -195,6 +211,7 @@ def quiz_setup(request):
 
 @login_required
 def start_quiz(request):
+    # (start_quiz implementation remains the same as original)
     if 'quiz_context' in request.session:
         request.session['quiz_context']['user_answers'] = {}
         request.session.modified = True
@@ -204,6 +221,7 @@ def start_quiz(request):
 
 @login_required
 def quiz_player(request, question_index):
+    # (quiz_player implementation remains the same as original)
     quiz_context = request.session.get('quiz_context')
     if not quiz_context:
         messages.error(request, "Quiz session not found. Please start a new quiz.")
@@ -350,10 +368,15 @@ def quiz_results(request):
     questions_in_quiz = Question.objects.filter(pk__in=question_ids).prefetch_related('answers')
     question_map = {q.id: q for q in questions_in_quiz}
 
-    # Initialize counters
+    # Initialize counters and lists for bulk operations
     correct_count = 0
     incorrect_count = 0
     review_data = []
+    user_answers_to_process = [] # List to hold UserAnswer instances
+
+    # OPTIMIZATION: Fetch existing UserAnswers for this user and these questions
+    existing_user_answers = UserAnswer.objects.filter(user=request.user, question_id__in=question_ids)
+    existing_ua_map = {ua.question_id: ua for ua in existing_user_answers}
 
     for q_id in question_ids:
         question = question_map.get(q_id)
@@ -370,12 +393,18 @@ def quiz_results(request):
                 # Determine correctness
                 is_correct = answer_info.get('is_correct', False)
 
-                # Update or create UserAnswer record
-                UserAnswer.objects.update_or_create(
-                    user=request.user,
-                    question=question,
-                    defaults={'is_correct': is_correct}
-                )
+                # OPTIMIZATION: Replace update_or_create with in-memory preparation
+                # Check if UserAnswer already exists in our map (using q_id)
+                ua_instance = existing_ua_map.get(q_id)
+                
+                if ua_instance:
+                    # If it exists, update its correctness (in memory)
+                    ua_instance.is_correct = is_correct
+                else:
+                    # If it doesn't exist, create a new instance (in memory, PK will be assigned later)
+                    ua_instance = UserAnswer(user=request.user, question=question, is_correct=is_correct)
+                
+                user_answers_to_process.append(ua_instance)
 
                 # Tally counts
                 if is_correct:
@@ -388,6 +417,24 @@ def quiz_results(request):
                  incorrect_count += 1 # Treat unanswered in test mode as incorrect for scoring
 
             review_data.append({'question': question, 'user_answer': user_answer_obj})
+
+    # OPTIMIZATION: Execute Bulk Operations
+    # Separate into creates and updates based on whether the PK is set (which means it came from existing_ua_map)
+    to_create = [ua for ua in user_answers_to_process if ua.pk is None]
+    to_update = [ua for ua in user_answers_to_process if ua.pk is not None]
+
+    if to_create:
+        try:
+            UserAnswer.objects.bulk_create(to_create)
+        except Exception as e:
+            logger.error(f"Error during bulk_create of UserAnswers: {e}", exc_info=True)
+    
+    if to_update:
+        try:
+            # Specify the field(s) to update. 'timestamp' is auto_now=True, so it updates automatically when using bulk_update.
+            UserAnswer.objects.bulk_update(to_update, ['is_correct'])
+        except Exception as e:
+            logger.error(f"Error during bulk_update of UserAnswers: {e}", exc_info=True)
 
     # --- Score Calculation (Updated for Negative Marking) ---
 
@@ -417,6 +464,8 @@ def quiz_results(request):
         'incorrect_count': incorrect_count,
     }
     return render(request, 'quiz/results.html', context)
+
+# (reset_performance, start_incorrect_quiz, start_flagged_quiz remain the same as original)
 
 @login_required
 def reset_performance(request):
@@ -448,12 +497,16 @@ def start_flagged_quiz(request):
     request.session['quiz_context'] = {'question_ids': question_ids, 'total_questions': len(question_ids), 'mode': 'quiz', 'user_answers': {}, 'penalty_value': 0.0}
     return redirect('start_quiz')
 
-# ... (report_question, create_checkout_session, success_page, cancel_page, stripe_webhook remain the same) ...
+
 @login_required
-@csrf_exempt
+# REMOVED @csrf_exempt: The frontend JS sends the CSRF token correctly via the <form> element in the template.
 def report_question(request):
     if request.method == 'POST':
         try:
+            # Basic validation of content type
+            if request.content_type != 'application/json':
+                 return JsonResponse({'status': 'error', 'message': 'Invalid content type.'}, status=415)
+
             data = json.loads(request.body)
             question_id = data.get('question_id')
             reason = data.get('reason')
@@ -468,14 +521,18 @@ def report_question(request):
                 defaults={'reason': reason, 'status': 'OPEN'}
             )
             return JsonResponse({'status': 'success', 'message': 'Report submitted successfully!'})
+        except json.JSONDecodeError:
+             return JsonResponse({'status': 'error', 'message': 'Invalid JSON payload.'}, status=400)
         except Question.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Question not found.'}, status=404)
         except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            logger.error(f"Error in report_question by user {request.user.id}: {e}", exc_info=True)
+            return JsonResponse({'status': 'error', 'message': 'An internal error occurred.'}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
 @login_required
 def create_checkout_session(request):
+    # (create_checkout_session implementation remains the same, adding logging)
     if request.method == 'POST':
         stripe.api_key = settings.STRIPE_SECRET_KEY
         price_id = request.POST.get('priceId')
@@ -502,7 +559,8 @@ def create_checkout_session(request):
             )
             return redirect(checkout_session.url, code=303)
         except Exception as e:
-            messages.error(request, f"An error occurred while setting up payment: {str(e)}")
+            logger.error(f"Stripe checkout error for user {request.user.id}: {e}", exc_info=True)
+            messages.error(request, f"An error occurred while setting up payment. Please try again later.")
             return redirect('membership_page')
     return redirect('membership_page')
 
@@ -512,7 +570,97 @@ def success_page(request):
 def cancel_page(request):
     return render(request, 'quiz/payment_canceled.html')
 
+# --- STRIPE WEBHOOK IMPLEMENTATION ---
+
 @csrf_exempt
 def stripe_webhook(request):
-    # Webhook handling logic should be implemented here
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+    event = None
+
+    if not endpoint_secret:
+        logger.error("CRITICAL ERROR: STRIPE_WEBHOOK_SECRET not configured.")
+        # Return 500 so Stripe retries later when configuration is fixed
+        return HttpResponse(status=500)
+
+    # 1. Verify Signature
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+    except ValueError as e:
+        # Invalid payload
+        logger.warning(f"Invalid Stripe payload: {e}")
+        return HttpResponse(status=400)
+    except stripe.error.SignatureVerificationError as e:
+        # Invalid signature
+        logger.warning(f"Invalid Stripe signature: {e}")
+        return HttpResponse(status=400)
+
+    # 2. Handle Events
+    # We rely on subscription updates as the source of truth for status and expiry.
+    if event['type'] in ['customer.subscription.created', 'customer.subscription.updated']:
+        subscription = event['data']['object']
+        customer_id = subscription.get('customer')
+        handle_subscription_update(customer_id, subscription)
+
+    elif event['type'] == 'customer.subscription.deleted':
+        # When a subscription is fully deleted (e.g., after repeated failed payments)
+        subscription = event['data']['object']
+        customer_id = subscription.get('customer')
+        handle_subscription_deletion(customer_id)
+    
     return HttpResponse(status=200)
+
+
+def handle_subscription_update(customer_id, subscription):
+    """Updates the user profile based on the Stripe subscription status."""
+    if not customer_id or not Profile:
+        return
+
+    try:
+        profile = Profile.objects.get(stripe_customer_id=customer_id)
+    except Profile.DoesNotExist:
+        logger.warning(f"Profile not found for Stripe Customer ID: {customer_id}")
+        return
+
+    status = subscription['status']
+    
+    # 'active' and 'trialing' statuses grant access.
+    if status in ['active', 'trialing']:
+        # Determine the new membership type based on the interval (Monthly or Annual)
+        try:
+            # Accessing the interval from the subscription object provided in the webhook
+            interval = subscription['items']['data'][0]['plan']['interval']
+            new_membership = 'Annual' if interval == 'year' else 'Monthly'
+        except (IndexError, KeyError):
+            new_membership = 'Monthly' # Fallback if interval cannot be determined
+            logger.warning(f"Could not determine interval for subscription {subscription.get('id')}. Defaulting to Monthly.")
+
+        expiry_timestamp = subscription['current_period_end']
+        # Convert Unix timestamp to a timezone-aware datetime, then extract the date
+        expiry_date = datetime.fromtimestamp(expiry_timestamp, tz=timezone.utc).date()
+
+        profile.membership = new_membership
+        profile.membership_expiry_date = expiry_date
+        profile.save()
+        logger.info(f"Updated profile {profile.id} (User: {profile.user.username}): Granted {new_membership} access until {expiry_date}.")
+
+    # For 'past_due', 'canceled', 'unpaid': Access remains valid until the 
+    # membership_expiry_date passes (which is checked dynamically in the quiz_setup view).
+    
+def handle_subscription_deletion(customer_id):
+    """Handles the complete deletion of a subscription, revoking access."""
+    if not Profile: return
+    try:
+        profile = Profile.objects.get(stripe_customer_id=customer_id)
+        # Downgrade the user immediately upon full deletion
+        profile.membership = 'Free'
+        profile.membership_expiry_date = None # Clear expiry as the subscription is gone
+        profile.save()
+        logger.info(f"Subscription deleted for {profile.id} (User: {profile.user.username}). Downgraded to Free.")
+    except Profile.DoesNotExist:
+        # If the profile doesn't exist, there's nothing to downgrade.
+        pass
