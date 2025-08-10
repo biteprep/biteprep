@@ -24,7 +24,7 @@ stripe==12.3.0
 
 # Security Packages
 django-otp==1.6.1
-django-admin-honeypot==1.1.0
+django-admin-honeypot1==1.2.0  # CORRECTED: Using the maintained fork
 qrcode==7.4.2
 
 # Admin Enhancements & Auditing
