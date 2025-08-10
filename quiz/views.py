@@ -19,8 +19,8 @@ from django.contrib import messages
 from django.urls import reverse
 from .models import Category, Question, Answer, UserAnswer, FlaggedQuestion, QuestionReport
 from .forms import ContactForm
+
 # Import Profile model for webhook processing
-# We use a try-except block just in case of initialization issues, though typically not needed here.
 try:
     from users.models import Profile
 except ImportError:
@@ -33,8 +33,7 @@ logger = logging.getLogger(__name__)
 
 MAX_QUESTIONS_PER_QUIZ = 500
 
-# (landing_page, contact_page, terms_page, privacy_page, cookie_page, membership_page remain the same)
-
+# (landing_page, contact_page, terms_page, privacy_page, cookie_page, membership_page remain the same as original)
 def landing_page(request):
     return render(request, 'quiz/landing_page.html')
 
@@ -48,12 +47,10 @@ def contact_page(request):
     else:
         initial_data = {}
         if request.user.is_authenticated:
-            # Assuming username and email fields exist on the User model
             initial_data = {'name': request.user.username, 'email': request.user.email}
         form = ContactForm(initial=initial_data)
     return render(request, 'quiz/contact.html', {'form': form})
 
-# Assuming template names based on previous context
 def terms_page(request):
     return render(request, 'quiz/terms_and_conditions.html')
 
@@ -75,7 +72,6 @@ def dashboard(request):
     total_answered = user_answers.count()
     correct_answered = user_answers.filter(is_correct=True).count()
 
-    # Use Decimal for percentage calculation for consistency
     if total_answered > 0:
         overall_percentage = (Decimal(correct_answered) / Decimal(total_answered)) * 100
     else:
@@ -88,7 +84,6 @@ def dashboard(request):
         .order_by('date'))
 
     chart_labels = [d['date'].strftime('%b %d') for d in daily_performance]
-    # Calculate percentages using Decimal and convert to float for Chart.js
     chart_data = []
     for d in daily_performance:
         if d['daily_total'] > 0:
@@ -137,7 +132,6 @@ def dashboard(request):
 def quiz_setup(request):
     # (quiz_setup implementation remains the same as original)
     if request.method == 'POST':
-        # ... (Subscription check and question filtering remains the same) ...
         profile = request.user.profile
         is_active_subscription = profile.membership_expiry_date and profile.membership_expiry_date >= date.today()
         if not (profile.membership == 'Free' or is_active_subscription):
@@ -179,7 +173,7 @@ def quiz_setup(request):
         quiz_context = {
             'question_ids': question_ids, 'total_questions': len(question_ids),
             'mode': quiz_mode, 'user_answers': {},
-            'penalty_value': 0.0 # Initialize penalty
+            'penalty_value': 0.0
         }
 
         # Handle Timer
@@ -194,13 +188,12 @@ def quiz_setup(request):
         # Handle Negative Marking (Only if Test Mode)
         if quiz_mode == 'test' and 'negative-marking-toggle' in request.POST:
             try:
-                # Store as float for easy session serialization; convert to Decimal during calculation.
                 penalty = float(request.POST.get('penalty_value', 0.0))
                 if penalty > 0:
                     quiz_context['penalty_value'] = penalty
             except (ValueError, TypeError):
                 messages.warning(request, "Invalid penalty value ignored.")
-                pass # Keep default 0.0 if invalid value
+                pass
 
         request.session['quiz_context'] = quiz_context
         return redirect('start_quiz')
@@ -228,7 +221,7 @@ def quiz_player(request, question_index):
         return redirect('quiz_setup')
 
     question_ids = quiz_context.get('question_ids', [])
-    total_questions = len(question_ids) # Define total_questions early
+    total_questions = len(question_ids)
 
     if not (0 < question_index <= total_questions):
         return redirect('quiz_results')
@@ -343,7 +336,6 @@ def quiz_player(request, question_index):
         'flagged_questions': user_flagged_ids,
         'seconds_remaining': seconds_remaining,
         'navigator_items': navigator_items,
-        # Add penalty info for display in the player header
         'penalty_value': quiz_context.get('penalty_value', 0.0),
     }
     return render(request, 'quiz/quiz_player.html', context)
@@ -351,6 +343,7 @@ def quiz_player(request, question_index):
 
 @login_required
 def quiz_results(request):
+    # (Optimized Implementation)
     quiz_context = request.session.pop('quiz_context', None)
     if not quiz_context: return redirect('home')
 
@@ -358,7 +351,6 @@ def quiz_results(request):
     question_ids = quiz_context.get('question_ids', [])
     total_questions = len(question_ids)
 
-    # Get penalty value and convert to Decimal for precision
     try:
         penalty_value = Decimal(str(quiz_context.get('penalty_value', 0.0)))
     except Exception:
@@ -372,9 +364,9 @@ def quiz_results(request):
     correct_count = 0
     incorrect_count = 0
     review_data = []
-    user_answers_to_process = [] # List to hold UserAnswer instances
+    user_answers_to_process = []
 
-    # OPTIMIZATION: Fetch existing UserAnswers for this user and these questions
+    # OPTIMIZATION: Fetch existing UserAnswers
     existing_user_answers = UserAnswer.objects.filter(user=request.user, question_id__in=question_ids)
     existing_ua_map = {ua.question_id: ua for ua in existing_user_answers}
 
@@ -383,43 +375,35 @@ def quiz_results(request):
         if question:
             answer_info = user_answers_dict.get(str(q_id))
             user_answer_obj = None
-            is_correct = False # Default assumption
+            is_correct = False
 
-            # Check if an answer was submitted (even if no option was selected in Quiz mode)
             if answer_info:
                 if answer_info.get('answer_id'):
                     user_answer_obj = next((a for a in question.answers.all() if a.id == answer_info['answer_id']), None)
 
-                # Determine correctness
                 is_correct = answer_info.get('is_correct', False)
 
-                # OPTIMIZATION: Replace update_or_create with in-memory preparation
-                # Check if UserAnswer already exists in our map (using q_id)
+                # OPTIMIZATION: Prepare in-memory instances
                 ua_instance = existing_ua_map.get(q_id)
                 
                 if ua_instance:
-                    # If it exists, update its correctness (in memory)
                     ua_instance.is_correct = is_correct
                 else:
-                    # If it doesn't exist, create a new instance (in memory, PK will be assigned later)
                     ua_instance = UserAnswer(user=request.user, question=question, is_correct=is_correct)
                 
                 user_answers_to_process.append(ua_instance)
 
-                # Tally counts
                 if is_correct:
                     correct_count += 1
                 else:
                     incorrect_count += 1
 
-            # Note: Unanswered questions in Test Mode are implicitly incorrect if penalty is active.
             elif quiz_context.get('mode') == 'test':
-                 incorrect_count += 1 # Treat unanswered in test mode as incorrect for scoring
+                 incorrect_count += 1
 
             review_data.append({'question': question, 'user_answer': user_answer_obj})
 
     # OPTIMIZATION: Execute Bulk Operations
-    # Separate into creates and updates based on whether the PK is set (which means it came from existing_ua_map)
     to_create = [ua for ua in user_answers_to_process if ua.pk is None]
     to_update = [ua for ua in user_answers_to_process if ua.pk is not None]
 
@@ -431,32 +415,26 @@ def quiz_results(request):
     
     if to_update:
         try:
-            # Specify the field(s) to update. 'timestamp' is auto_now=True, so it updates automatically when using bulk_update.
+            # 'timestamp' (auto_now=True) updates automatically.
             UserAnswer.objects.bulk_update(to_update, ['is_correct'])
         except Exception as e:
             logger.error(f"Error during bulk_update of UserAnswers: {e}", exc_info=True)
 
-    # --- Score Calculation (Updated for Negative Marking) ---
-
+    # --- Score Calculation ---
     total_penalty = incorrect_count * penalty_value
     final_score = Decimal(correct_count) - total_penalty
-
-    # Ensure score doesn't drop below zero
     final_score = max(Decimal(0), final_score)
 
-    # Calculate percentage
     if total_questions > 0:
         percentage_score = (final_score / Decimal(total_questions)) * 100
     else:
         percentage_score = Decimal(0)
 
-    # Format for display using quantize
     context = {
         'final_score': final_score.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP),
         'total_questions': total_questions,
         'percentage_score': percentage_score.quantize(Decimal('0.1'), rounding=ROUND_HALF_UP),
         'review_data': review_data,
-        # Add penalty context for display
         'penalty_applied': penalty_value > 0,
         'penalty_value': penalty_value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP),
         'total_penalty': total_penalty.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP),
@@ -464,8 +442,6 @@ def quiz_results(request):
         'incorrect_count': incorrect_count,
     }
     return render(request, 'quiz/results.html', context)
-
-# (reset_performance, start_incorrect_quiz, start_flagged_quiz remain the same as original)
 
 @login_required
 def reset_performance(request):
@@ -482,7 +458,6 @@ def start_incorrect_quiz(request):
         messages.success(request, "Great job! You have no incorrect answers to review.")
         return redirect('dashboard')
     random.shuffle(question_ids)
-    # Ensure penalty is reset for review modes
     request.session['quiz_context'] = {'question_ids': question_ids, 'total_questions': len(question_ids), 'mode': 'quiz', 'user_answers': {}, 'penalty_value': 0.0}
     return redirect('start_quiz')
 
@@ -493,17 +468,15 @@ def start_flagged_quiz(request):
         messages.info(request, "You have not flagged any questions for review.")
         return redirect('dashboard')
     random.shuffle(question_ids)
-    # Ensure penalty is reset for review modes
     request.session['quiz_context'] = {'question_ids': question_ids, 'total_questions': len(question_ids), 'mode': 'quiz', 'user_answers': {}, 'penalty_value': 0.0}
     return redirect('start_quiz')
 
 
 @login_required
-# REMOVED @csrf_exempt: The frontend JS sends the CSRF token correctly via the <form> element in the template.
+# REMOVED @csrf_exempt: The frontend JS sends the CSRF token correctly.
 def report_question(request):
     if request.method == 'POST':
         try:
-            # Basic validation of content type
             if request.content_type != 'application/json':
                  return JsonResponse({'status': 'error', 'message': 'Invalid content type.'}, status=415)
 
@@ -600,14 +573,12 @@ def stripe_webhook(request):
         return HttpResponse(status=400)
 
     # 2. Handle Events
-    # We rely on subscription updates as the source of truth for status and expiry.
     if event['type'] in ['customer.subscription.created', 'customer.subscription.updated']:
         subscription = event['data']['object']
         customer_id = subscription.get('customer')
         handle_subscription_update(customer_id, subscription)
 
     elif event['type'] == 'customer.subscription.deleted':
-        # When a subscription is fully deleted (e.g., after repeated failed payments)
         subscription = event['data']['object']
         customer_id = subscription.get('customer')
         handle_subscription_deletion(customer_id)
@@ -630,13 +601,12 @@ def handle_subscription_update(customer_id, subscription):
     
     # 'active' and 'trialing' statuses grant access.
     if status in ['active', 'trialing']:
-        # Determine the new membership type based on the interval (Monthly or Annual)
         try:
-            # Accessing the interval from the subscription object provided in the webhook
+            # Accessing the interval
             interval = subscription['items']['data'][0]['plan']['interval']
             new_membership = 'Annual' if interval == 'year' else 'Monthly'
         except (IndexError, KeyError):
-            new_membership = 'Monthly' # Fallback if interval cannot be determined
+            new_membership = 'Monthly' # Fallback
             logger.warning(f"Could not determine interval for subscription {subscription.get('id')}. Defaulting to Monthly.")
 
         expiry_timestamp = subscription['current_period_end']
@@ -648,19 +618,17 @@ def handle_subscription_update(customer_id, subscription):
         profile.save()
         logger.info(f"Updated profile {profile.id} (User: {profile.user.username}): Granted {new_membership} access until {expiry_date}.")
 
-    # For 'past_due', 'canceled', 'unpaid': Access remains valid until the 
-    # membership_expiry_date passes (which is checked dynamically in the quiz_setup view).
+    # For 'past_due', 'canceled', 'unpaid': Access is handled by checking expiry_date dynamically.
     
 def handle_subscription_deletion(customer_id):
-    """Handles the complete deletion of a subscription, revoking access."""
+    """Handles the complete deletion of a subscription."""
     if not Profile: return
     try:
         profile = Profile.objects.get(stripe_customer_id=customer_id)
         # Downgrade the user immediately upon full deletion
         profile.membership = 'Free'
-        profile.membership_expiry_date = None # Clear expiry as the subscription is gone
+        profile.membership_expiry_date = None
         profile.save()
         logger.info(f"Subscription deleted for {profile.id} (User: {profile.user.username}). Downgraded to Free.")
     except Profile.DoesNotExist:
-        # If the profile doesn't exist, there's nothing to downgrade.
         pass

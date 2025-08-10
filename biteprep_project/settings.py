@@ -4,10 +4,25 @@ from pathlib import Path
 import os
 import dj_database_url
 from dotenv import load_dotenv
+import logging
+
+# Set up basic logging configuration early to catch startup issues
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
+
+# CRITICAL: Ensure SECRET_KEY is set in production
+if not SECRET_KEY:
+    if os.getenv('DEBUG', 'False') == 'True':
+        logger.warning("WARNING: SECRET_KEY not set. Using an insecure default for development.")
+        SECRET_KEY = 'django-insecure-development-key'
+    else:
+        # Raise error if the key is missing in production
+        raise ValueError("FATAL: The SECRET_KEY environment variable must be set in production.")
+
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
@@ -38,7 +53,7 @@ INSTALLED_APPS = [
     'rangefilter',
 ]
 
-# MIDDLEWARE updated: Removed ForceProjectTemplateContextMiddleware
+# MIDDLEWARE
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -48,7 +63,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     # OTPMiddleware must come after AuthenticationMiddleware
     'django_otp.middleware.OTPMiddleware',
-    # 'users.middleware.ForceProjectTemplateContextMiddleware', # REMOVED
     'impersonate.middleware.ImpersonateMiddleware',
     'simple_history.middleware.HistoryRequestMiddleware',
     'users.middleware.EnsureProfileMiddleware',
@@ -98,9 +112,8 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# --- Email Configuration (CRITICAL FOR PRODUCTION) ---
-# Use SMTP for sending emails (e.g., password resets).
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# --- Email Configuration (Handles Deferral Securely) ---
+
 EMAIL_HOST = os.getenv('EMAIL_HOST')
 # Safely convert port to integer
 try:
@@ -113,9 +126,14 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@biteprep.com')
 
-if DEBUG and not EMAIL_HOST:
-    # In development, if no host is set, print emails to the console.
+if EMAIL_HOST and EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
+    # Use SMTP if credentials are provided
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+else:
+    # Fallback to console backend if credentials are missing (prevents crashes)
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    if not DEBUG:
+        logger.warning("WARNING: Email configuration (EMAIL_HOST/USER/PASSWORD) is missing. Emails will be printed to the console/logs instead of being sent.")
 
 
 # --- Static and Media Files Configuration ---
@@ -126,16 +144,13 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # Default configuration for static files using WhiteNoise
 DEFAULT_STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# --- Cloud Storage Configuration for Media Files (CRITICAL FOR PRODUCTION) ---
-# Prevents uploaded images from being deleted on server restarts (ephemeral filesystems).
-# Uses AWS S3 compatible storage (e.g., DigitalOcean Spaces, AWS S3).
+# --- Cloud Storage Configuration (Handles Deferral Securely) ---
 
 AWS_ACCESS_KEY_ID = os.getenv('SPACES_KEY')
 AWS_SECRET_ACCESS_KEY = os.getenv('SPACES_SECRET')
 AWS_STORAGE_BUCKET_NAME = os.getenv('SPACES_BUCKET')
-AWS_S3_ENDPOINT_URL = os.getenv('SPACES_ENDPOINT_URL') # e.g., https://fra1.digitaloceanspaces.com
+AWS_S3_ENDPOINT_URL = os.getenv('SPACES_ENDPOINT_URL')
 AWS_S3_REGION_NAME = os.getenv('SPACES_REGION')
-# Optional: If you use a CDN or custom domain in front of your bucket
 AWS_S3_CUSTOM_DOMAIN = os.getenv('SPACES_CUSTOM_DOMAIN')
 
 
@@ -151,29 +166,26 @@ if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
     }
     
-    # If using a custom domain/CDN, the MEDIA_URL is derived from it.
+    # Determine Media URL based on configuration
     if AWS_S3_CUSTOM_DOMAIN:
          MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
-    # Otherwise, it's derived from the endpoint URL
     elif AWS_S3_ENDPOINT_URL:
-        # Note: S3Boto3Storage handles the final URL construction correctly internally.
         MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/'
    
-    AWS_S3_FILE_OVERWRITE = False # Prevent overwriting files with the same name
-    AWS_DEFAULT_ACL = 'public-read' # Ensure uploaded files are readable if using ACLs
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_DEFAULT_ACL = 'public-read'
     AWS_S3_OBJECT_PARAMETERS = {
         'CacheControl': 'max-age=86400',
     }
 else:
-    # Fallback to local storage for development
-    if not DEBUG:
-        print("WARNING: Production environment detected but cloud storage credentials (SPACES_KEY/SECRET/BUCKET) missing. Media uploads will fail or be lost.")
-    
+    # Fallback to local storage if credentials are missing
     STORAGES["default"] = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     }
     MEDIA_URL = '/media/'
     MEDIA_ROOT = BASE_DIR / 'media'
+    if not DEBUG:
+        logger.warning("WARNING: Cloud storage credentials (SPACES_KEY/SECRET/BUCKET) missing. Media uploads will be stored locally and lost on restart.")
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -195,19 +207,16 @@ if not DEBUG:
     CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',')
 
     # --- Advanced Security Headers ---
-    # HTTP Strict Transport Security (HSTS) - CRITICAL for HTTPS-only sites
-    # Start with a short time (1 hour = 3600s) to test deployment, then increase significantly (e.g., 1 year = 31536000).
+    # HSTS: Start short (1 hour = 3600s) to test, then increase (1 year = 31536000).
     SECURE_HSTS_SECONDS = 3600 
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True # Prevents MIME-type sniffing vulnerabilities.
+    SECURE_CONTENT_TYPE_NOSNIFF = True
 
 
 # --- Impersonation Security Settings ---
-# Define global rules to strictly control who can impersonate whom.
-
 def IMPERSONATE_CUSTOM_ALLOW(request):
-    # Rule 1: Only allow users who are staff or superusers to initiate impersonation.
+    # Rule 1: Only allow staff or superusers to initiate impersonation.
     if not request.user.is_authenticated:
         return False
     return request.user.is_staff or request.user.is_superuser
@@ -216,8 +225,9 @@ def IMPERSONATE_CUSTOM_TARGET(user):
     # Rule 2: Do not allow impersonating other staff or superuser accounts.
     return not user.is_staff and not user.is_superuser
 
-# --- Logging Configuration ---
-# Ensures application errors (INFO level and above) are captured in production logs.
+# --- Logging Configuration (Production Ready) ---
+# This configuration ensures logs are captured by Render/Heroku.
+# We re-define LOGGING here to use the finalized DEBUG value.
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -234,6 +244,7 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+            # Use verbose formatter in development, simple in production
             'formatter': 'verbose' if DEBUG else 'simple',
         },
     },
@@ -248,8 +259,7 @@ LOGGING = {
             'level': 'INFO' if not DEBUG else 'DEBUG',
             'propagate': False,
         },
-        # Add specific loggers for your applications (quiz, users)
-        # This allows capturing specific app events (like Stripe webhooks)
+        # Specific loggers for your applications (captures Stripe webhook events)
         'quiz': {
             'handlers': ['console'],
             'level': 'INFO' if not DEBUG else 'DEBUG',

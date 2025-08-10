@@ -24,11 +24,11 @@ stripe==12.3.0
 
 # Security Packages
 django-otp==1.6.1
-django-admin-honeypot==1.1.0  # CORRECTED VERSION
+django-admin-honeypot==1.1.0
 qrcode==7.4.2
 
 # Admin Enhancements & Auditing
-django-simple-history==3.6.1
+django-simple-history==3.10.1  # CORRECTED VERSION
 django-impersonate==1.9.2
 django-admin-rangefilter==0.11.2
 
