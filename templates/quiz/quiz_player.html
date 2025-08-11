@@ -52,7 +52,8 @@
                     <!-- Answers -->
                     {% if is_feedback_mode %}
                         <!-- Feedback Mode (Quiz Mode after submission) -->
-                        <div class="list-group">
+                        <!-- UPDATED: Added answer-list-group -->
+                        <div class="list-group answer-list-group">
                             {% for answer in question.answers.all %}
                                 <div class="list-group-item
                                     {% if answer.is_correct %}list-group-item-success{% endif %}
@@ -60,14 +61,7 @@
                                     d-flex justify-content-between align-items-center
                                 ">
                                     <span>
-                                        <!-- Added clear visual icons -->
-                                        {% if answer.is_correct %}
-                                            <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                        {% elif user_answer and answer.id == user_answer.id %}
-                                            <i class="bi bi-x-circle-fill text-danger me-2"></i>
-                                        {% else %}
-                                            <i class="bi bi-circle me-2 text-muted"></i>
-                                        {% endif %}
+                                        <!-- UPDATED: Icons removed, CSS handles visualization -->
                                         {{ answer.answer_text }}
                                     </span>
                                     {% if user_answer and answer.id == user_answer.id %}
@@ -83,10 +77,12 @@
                         </div>
                     {% else %}
                         <!-- Active Quiz/Test Mode -->
-                        <div class="list-group">
+                        <!-- UPDATED: Added answer-list-group -->
+                        <div class="list-group answer-list-group">
                             {% for answer in question.answers.all %}
-                                <label class="list-group-item list-group-item-action p-3">
-                                    <input class="form-check-input me-3" type="radio" name="answer" value="{{ answer.id }}" {% if user_selected_answer_id == answer.id %}checked{% endif %}>
+                                <!-- UPDATED: Removed p-3 as CSS handles padding. Hide radio button. -->
+                                <label class="list-group-item list-group-item-action">
+                                    <input class="form-check-input visually-hidden" type="radio" name="answer" value="{{ answer.id }}" {% if user_selected_answer_id == answer.id %}checked{% endif %}>
                                     {{ answer.answer_text }}
                                 </label>
                             {% endfor %}

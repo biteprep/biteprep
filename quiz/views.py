@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 MAX_QUESTIONS_PER_QUIZ = 500
 
-# (landing_page, contact_page, terms_page, privacy_page, cookie_page, membership_page remain the same as original)
+# (landing_page, contact_page, terms_page, privacy_page, cookie_page, membership_page remain the same)
 def landing_page(request):
     return render(request, 'quiz/landing_page.html')
 
@@ -67,7 +67,7 @@ def membership_page(request):
 
 @login_required
 def dashboard(request):
-    # (dashboard implementation remains the same as original)
+    # (dashboard implementation remains the same)
     user_answers = UserAnswer.objects.filter(user=request.user)
     total_answered = user_answers.count()
     correct_answered = user_answers.filter(is_correct=True).count()
@@ -130,19 +130,22 @@ def dashboard(request):
 
 @login_required
 def quiz_setup(request):
-    # (quiz_setup implementation remains the same as original)
     if request.method == 'POST':
+        # (Validation and Question Selection logic remains the same)
         profile = request.user.profile
         is_active_subscription = profile.membership_expiry_date and profile.membership_expiry_date >= date.today()
         if not (profile.membership == 'Free' or is_active_subscription):
             messages.warning(request, "Your subscription has expired. Please renew your plan.")
             return redirect('membership_page')
+        
         selected_subtopic_ids = request.POST.getlist('subtopics')
         if not selected_subtopic_ids:
             messages.info(request, "Please select at least one topic to start a quiz.")
             return redirect('quiz_setup')
+        
         question_filter = request.POST.get('question_filter', 'all')
         questions = Question.objects.filter(subtopic__id__in=selected_subtopic_ids)
+        
         if question_filter == 'unanswered':
             answered_question_ids = UserAnswer.objects.filter(user=request.user).values_list('question_id', flat=True)
             questions = questions.exclude(id__in=answered_question_ids)
@@ -150,11 +153,16 @@ def quiz_setup(request):
             questions = questions.filter(id__in=UserAnswer.objects.filter(user=request.user, is_correct=True).values_list('question_id', flat=True))
         elif question_filter == 'incorrect':
             questions = questions.filter(id__in=UserAnswer.objects.filter(user=request.user, is_correct=False).values_list('question_id', flat=True))
+        
         question_ids = list(questions.values_list('id', flat=True).distinct())
+        
         if not question_ids:
             messages.info(request, "No questions found for your selected topics and filters.")
             return redirect('quiz_setup')
+        
         random.shuffle(question_ids)
+        
+        # Handle question count limits
         if profile.membership == 'Free':
             question_ids = question_ids[:10]
         elif request.POST.get('question_count_type') == 'custom':
@@ -163,6 +171,7 @@ def quiz_setup(request):
                 if custom_count > 0:
                     question_ids = question_ids[:custom_count]
             except (ValueError, TypeError): pass
+        
         if len(question_ids) > MAX_QUESTIONS_PER_QUIZ:
             if profile.membership != 'Free':
                  messages.warning(request, f"To ensure stability, the quiz has been limited to the maximum of {MAX_QUESTIONS_PER_QUIZ} questions.")
@@ -185,8 +194,9 @@ def quiz_setup(request):
                     quiz_context['duration_seconds'] = timer_minutes * 60
             except (ValueError, TypeError): pass
 
-        # Handle Negative Marking (Only if Test Mode)
-        if quiz_mode == 'test' and 'negative-marking-toggle' in request.POST:
+        # Handle Negative Marking (UPDATED: Now allowed for BOTH Quiz and Test modes)
+        # We removed the previous `if quiz_mode == 'test'` check.
+        if 'negative-marking-toggle' in request.POST:
             try:
                 penalty = float(request.POST.get('penalty_value', 0.0))
                 if penalty > 0:
@@ -204,7 +214,7 @@ def quiz_setup(request):
 
 @login_required
 def start_quiz(request):
-    # (start_quiz implementation remains the same as original)
+    # (start_quiz implementation remains the same)
     if 'quiz_context' in request.session:
         request.session['quiz_context']['user_answers'] = {}
         request.session.modified = True
@@ -214,7 +224,7 @@ def start_quiz(request):
 
 @login_required
 def quiz_player(request, question_index):
-    # (quiz_player implementation remains the same as original)
+    # (quiz_player implementation remains the same)
     quiz_context = request.session.get('quiz_context')
     if not quiz_context:
         messages.error(request, "Quiz session not found. Please start a new quiz.")
@@ -378,6 +388,7 @@ def quiz_results(request):
             is_correct = False
 
             if answer_info:
+                # Question was answered (or submitted blank in Quiz mode)
                 if answer_info.get('answer_id'):
                     user_answer_obj = next((a for a in question.answers.all() if a.id == answer_info['answer_id']), None)
 
@@ -398,7 +409,9 @@ def quiz_results(request):
                 else:
                     incorrect_count += 1
 
-            elif quiz_context.get('mode') == 'test':
+            # Question was NOT answered (skipped)
+            # UPDATED: In 'Test' mode OR if negative marking is active (regardless of mode), unanswered questions count as incorrect for scoring.
+            elif quiz_context.get('mode') == 'test' or penalty_value > 0:
                  incorrect_count += 1
 
             review_data.append({'question': question, 'user_answer': user_answer_obj})
@@ -423,6 +436,7 @@ def quiz_results(request):
     # --- Score Calculation ---
     total_penalty = incorrect_count * penalty_value
     final_score = Decimal(correct_count) - total_penalty
+    # Ensure score doesn't drop below 0, even with penalties
     final_score = max(Decimal(0), final_score)
 
     if total_questions > 0:
@@ -442,6 +456,8 @@ def quiz_results(request):
         'incorrect_count': incorrect_count,
     }
     return render(request, 'quiz/results.html', context)
+
+# (reset_performance, start_incorrect_quiz, start_flagged_quiz, report_question, create_checkout_session, success_page, cancel_page, stripe_webhook, handle_subscription_update, handle_subscription_deletion remain the same)
 
 @login_required
 def reset_performance(request):
@@ -505,7 +521,7 @@ def report_question(request):
 
 @login_required
 def create_checkout_session(request):
-    # (create_checkout_session implementation remains the same, adding logging)
+    # (create_checkout_session implementation remains the same)
     if request.method == 'POST':
         stripe.api_key = settings.STRIPE_SECRET_KEY
         price_id = request.POST.get('priceId')
@@ -544,6 +560,7 @@ def cancel_page(request):
     return render(request, 'quiz/payment_canceled.html')
 
 # --- STRIPE WEBHOOK IMPLEMENTATION ---
+# (Webhook implementation remains the same)
 
 @csrf_exempt
 def stripe_webhook(request):
