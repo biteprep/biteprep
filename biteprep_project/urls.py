@@ -39,20 +39,36 @@ class BitePrepOTPAdminSite(OTPAdminSite):
         # Subscription Stats (Active means expiry date is today or in the future)
         active_subscriptions = 0
         if Profile:
-            active_subscriptions = Profile.objects.filter(
-                Q(membership='Monthly') | Q(membership='Annual'),
-                membership_expiry_date__gte=today
-            ).count()
+            # Robustness: Check if Profile fields exist before querying (handles initial migrations)
+            if hasattr(Profile, 'membership') and hasattr(Profile, 'membership_expiry_date'):
+                active_subscriptions = Profile.objects.filter(
+                    Q(membership='Monthly') | Q(membership='Annual'),
+                    membership_expiry_date__gte=today
+                ).count()
 
         # Content Stats
-        # Show both LIVE and DRAFT counts
-        live_questions = Question.objects.filter(status='LIVE').count()
-        draft_questions = Question.objects.filter(status='DRAFT').count()
+        # Robustness: Check if 'status' field exists before querying it (handles initial migrations)
+        if hasattr(Question, 'status'):
+             live_questions = Question.objects.filter(status='LIVE').count()
+             draft_questions = Question.objects.filter(status='DRAFT').count()
+        else:
+             # Fallback if status field hasn't been migrated yet
+             live_questions = Question.objects.count()
+             draft_questions = 0
+
         total_answers_taken = UserAnswer.objects.count()
 
         # Support Stats
-        open_reports = QuestionReport.objects.filter(status='OPEN').count()
-        new_inquiries = ContactInquiry.objects.filter(status='NEW').count()
+        # Robustness: Check if models have 'status' field before querying
+        if hasattr(QuestionReport, 'status'):
+            open_reports = QuestionReport.objects.filter(status='OPEN').count()
+        else:
+            open_reports = 0
+
+        if hasattr(ContactInquiry, 'status'):
+             new_inquiries = ContactInquiry.objects.filter(status='NEW').count()
+        else:
+            new_inquiries = 0
 
         # Add stats to context
         extra_context['dashboard_stats'] = {
@@ -72,12 +88,17 @@ class BitePrepOTPAdminSite(OTPAdminSite):
 otp_admin_site = BitePrepOTPAdminSite()
 
 # Copy registry from the default admin site (site) to the OTP-enabled site (otp_admin_site)
-# This ensures all models registered via @admin.register() (including our enhanced UserAdmin/QuestionAdmin) are available in our custom site.
+# This ensures all models registered via @admin.register() are available in our custom site.
 for model, model_admin in site._registry.items():
     # We must check if the model is already registered to avoid potential conflicts
     if not otp_admin_site.is_registered(model):
         # Register the model with the specific admin class used in the default site
-        otp_admin_site.register(model, model_admin.__class__)
+        try:
+            # We use model_admin.__class__ to ensure we register the correct admin class instance
+            otp_admin_site.register(model, model_admin.__class__)
+        except admin.sites.AlreadyRegistered:
+            # Handle cases where registration might be attempted multiple times
+            pass
 
 # SECRET_ADMIN_PATH is loaded dynamically from settings.SECRET_ADMIN_PATH
 
@@ -101,10 +122,42 @@ urlpatterns = [
         name='logout'),
 
     # Password Change (While logged in)
-    # ... (Password change routes remain the same)
+    # FIX: Restored these routes
+    path('accounts/password_change/',
+         auth_views.PasswordChangeView.as_view(
+             template_name='registration/password_change_form.html'
+         ),
+         name='password_change'),
+    path('accounts/password_change/done/',
+         auth_views.PasswordChangeDoneView.as_view(
+             template_name='registration/password_change_done.html'
+         ),
+         name='password_change_done'),
 
     # Password Reset (When forgotten) - Requires Email Configuration
-    # ... (Password reset routes remain the same)
+    # FIX: Restored these routes (This fixes the 500 error on the login page)
+    path('accounts/password_reset/',
+         auth_views.PasswordResetView.as_view(
+             template_name='registration/password_reset_form.html',
+             # Ensure it uses the custom email template provided
+             email_template_name='registration/password_reset_email.html'
+         ),
+         name='password_reset'),
+    path('accounts/password_reset/done/',
+         auth_views.PasswordResetDoneView.as_view(
+             template_name='registration/password_reset_done.html'
+         ),
+         name='password_reset_done'),
+    path('accounts/reset/<uidb64>/<token>/',
+         auth_views.PasswordResetConfirmView.as_view(
+             template_name='registration/password_reset_confirm.html'
+         ),
+         name='password_reset_confirm'),
+    path('accounts/reset/done/',
+         auth_views.PasswordResetCompleteView.as_view(
+             template_name='registration/password_reset_complete.html'
+         ),
+         name='password_reset_complete'),
          
     # Application URLs
     path('accounts/', include('users.urls')),
@@ -114,6 +167,7 @@ urlpatterns = [
 # Serve media files locally ONLY if DEBUG is True AND we are using local storage.
 if settings.DEBUG:
     # Check if the default storage backend is FileSystemStorage (local)
+    # We use .get() safely in case STORAGES isn't configured correctly yet.
     is_local_storage = settings.STORAGES.get("default", {}).get("BACKEND") == "django.core.files.storage.FileSystemStorage"
     if is_local_storage:
         urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
