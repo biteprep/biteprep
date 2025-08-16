@@ -3,7 +3,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
-from django.utils.text import Truncator # Import Truncator for the fix
+from django.utils.text import Truncator
 from .models import Category, Topic, Subtopic, Question, Answer, UserAnswer, QuestionReport, ContactInquiry, FlaggedQuestion
 
 # Import for History/Audit Log
@@ -34,13 +34,18 @@ class AnswerInline(admin.TabularInline):
 
 @admin.register(Question)
 class QuestionAdmin(SimpleHistoryAdmin):
+    # FIX: Added 'status' to the fieldsets
     fieldsets = [
+        ('Status', {'fields': ['status']}), # Added this section
         ('Question Information', {'fields': ['subtopic', 'question_text', 'question_image']}),
         ('Explanation', {'fields': ['explanation']}),
     ]
     inlines = [AnswerInline]
-    list_display = ('question_text_short', 'subtopic', 'get_topic', 'get_category')
-    list_filter = ['subtopic__topic__category', 'subtopic__topic', 'subtopic']
+    # FIX: Added 'status' to list_display and list_editable
+    list_display = ('question_text_short', 'subtopic', 'get_topic', 'status')
+    list_filter = ['status', 'subtopic__topic__category', 'subtopic__topic', 'subtopic']
+    list_editable = ('status',) # Make status editable in the list
+    
     search_fields = ['question_text', 'explanation']
     list_select_related = ('subtopic__topic__category',)
 

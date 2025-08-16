@@ -4,7 +4,6 @@ import random
 import stripe
 import json
 # Ensure datetime and timezone are imported correctly
-# FIX: Removed 'date' from standard datetime import to enforce use of timezone.now().date()
 from datetime import datetime, timedelta
 from django.utils import timezone
 # Import Decimal for precise score calculations
@@ -16,6 +15,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
+# FIX: Import DatabaseError
+from django.db.utils import DatabaseError
 from django.db.models.functions import TruncDate
 from django.contrib import messages
 from django.urls import reverse
@@ -49,7 +50,9 @@ def contact_page(request):
     else:
         initial_data = {}
         if request.user.is_authenticated:
-            initial_data = {'name': request.user.username, 'email': request.user.email}
+            # Use getattr for robustness in case name fields are customized later
+            display_name = getattr(request.user, 'get_full_name', request.user.username)()
+            initial_data = {'name': display_name, 'email': request.user.email}
         form = ContactForm(initial=initial_data)
     return render(request, 'quiz/contact.html', {'form': form})
 
@@ -136,7 +139,7 @@ def quiz_setup(request):
     if request.method == 'POST':
         profile = request.user.profile
 
-        # FIX: Use timezone.now().date() for robust, timezone-aware date comparison
+        # Use timezone.now().date() for robust, timezone-aware date comparison
         today = timezone.now().date()
         is_active_subscription = profile.membership_expiry_date and profile.membership_expiry_date >= today
         
@@ -151,11 +154,19 @@ def quiz_setup(request):
         
         question_filter = request.POST.get('question_filter', 'all')
 
-        # FIX: CRITICAL - Ensure only LIVE questions are selected
-        questions = Question.objects.filter(
-            subtopic__id__in=selected_subtopic_ids,
-            status='LIVE'
-        )
+        # FIX: Handle the case where the 'status' column might be missing during the POST request.
+        try:
+            # Attempt to filter by LIVE status
+            questions = Question.objects.filter(
+                subtopic__id__in=selected_subtopic_ids,
+                status='LIVE'
+            )
+        except DatabaseError:
+             # Fallback if 'status' column is missing: Assume all questions are LIVE.
+             logger.warning("DatabaseError in quiz_setup (POST). 'status' column likely missing. Assuming all questions are LIVE.")
+             questions = Question.objects.filter(
+                subtopic__id__in=selected_subtopic_ids
+            )
         
         if question_filter == 'unanswered':
             answered_question_ids = UserAnswer.objects.filter(user=request.user).values_list('question_id', flat=True)
@@ -173,7 +184,7 @@ def quiz_setup(request):
         
         random.shuffle(question_ids)
         
-        # Handle question count limits (Remains the same)
+        # Handle question count limits
         if profile.membership == 'Free':
             question_ids = question_ids[:10]
         elif request.POST.get('question_count_type') == 'custom':
@@ -189,7 +200,7 @@ def quiz_setup(request):
             question_ids = question_ids[:MAX_QUESTIONS_PER_QUIZ]
 
 
-        # Initialize quiz context (Remains the same)
+        # Initialize quiz context
         quiz_mode = request.POST.get('quiz_mode', 'quiz')
         quiz_context = {
             'question_ids': question_ids, 'total_questions': len(question_ids),
@@ -197,7 +208,7 @@ def quiz_setup(request):
             'penalty_value': 0.0
         }
 
-        # Handle Timer (Remains the same)
+        # Handle Timer
         if 'timer-toggle' in request.POST:
             try:
                 timer_minutes = int(request.POST.get('timer_minutes', 0))
@@ -206,7 +217,7 @@ def quiz_setup(request):
                     quiz_context['duration_seconds'] = timer_minutes * 60
             except (ValueError, TypeError): pass
 
-        # Handle Negative Marking (Remains the same)
+        # Handle Negative Marking
         if 'negative-marking-toggle' in request.POST:
             try:
                 penalty = float(request.POST.get('penalty_value', 0.0))
@@ -221,12 +232,19 @@ def quiz_setup(request):
         return redirect('start_quiz')
 
     # GET request: Display the form
-    # Optimization: Only show categories/topics that actually have LIVE questions
-    categories = Category.objects.prefetch_related(
-        'topics__subtopics'
-    ).filter(
-        topics__subtopics__questions__status='LIVE'
-    ).distinct()
+    # FIX: Handle the case where the 'status' column might be missing when loading the page.
+    try:
+        # Attempt the optimized query filtering for LIVE questions
+        categories = Category.objects.prefetch_related(
+            'topics__subtopics'
+        ).filter(
+            topics__subtopics__questions__status='LIVE'
+        ).distinct()
+    except DatabaseError:
+        # Fallback if the 'status' column is missing.
+        logger.warning("DatabaseError in quiz_setup (GET). 'status' column likely missing. Falling back to loading all categories.")
+        categories = Category.objects.prefetch_related('topics__subtopics').all()
+
     
     context = {'categories': categories}
     return render(request, 'quiz/quiz_setup.html', context)
@@ -234,7 +252,6 @@ def quiz_setup(request):
 
 @login_required
 def start_quiz(request):
-    # (start_quiz implementation remains the same)
     if 'quiz_context' in request.session:
         request.session['quiz_context']['user_answers'] = {}
         request.session.modified = True
@@ -244,7 +261,6 @@ def start_quiz(request):
 
 @login_required
 def quiz_player(request, question_index):
-    # (quiz_player implementation, with minor robustness improvements)
     quiz_context = request.session.get('quiz_context')
     if not quiz_context:
         messages.error(request, "Quiz session not found. Please start a new quiz.")
@@ -253,14 +269,21 @@ def quiz_player(request, question_index):
     question_ids = quiz_context.get('question_ids', [])
     total_questions = len(question_ids)
 
+    # Ensure index is valid, otherwise redirect to results
     if not (0 < question_index <= total_questions):
-        return redirect('quiz_results')
+        # Check if the index is exactly 1 more than total, common after the last question
+        if question_index == total_questions + 1:
+             return redirect('quiz_results')
+        # Handle other invalid indices (e.g., 0 or very large numbers)
+        messages.warning(request, "Invalid question index. Redirecting to quiz start.")
+        return redirect('quiz_player', question_index=1)
+
 
     question_id = question_ids[question_index - 1]
     quiz_mode = quiz_context.get('mode', 'quiz')
     is_feedback_mode = False
 
-    # Handle POST request (Remains the same)
+    # Handle POST request
     if request.method == 'POST':
         action = request.POST.get('action')
         submitted_answer_id_str = request.POST.get('answer')
@@ -340,7 +363,7 @@ def quiz_player(request, question_index):
              del quiz_context['start_time']
              request.session.modified = True
 
-    # Navigator setup (Remains the same)
+    # Navigator setup
     user_flagged_ids = set(FlaggedQuestion.objects.filter(user=request.user, question_id__in=question_ids).values_list('question_id', flat=True))
     navigator_items = []
 
@@ -363,7 +386,7 @@ def quiz_player(request, question_index):
     if quiz_mode == 'quiz' and user_answer_info and user_answer_info.get('is_submitted'):
         is_feedback_mode = True
 
-    # Safely fetch user answer object (Remains the same)
+    # Safely fetch user answer object
     user_answer_obj = None
     if is_feedback_mode and user_answer_info and user_answer_info.get('answer_id'):
         try:
@@ -397,7 +420,6 @@ def quiz_player(request, question_index):
 
 @login_required
 def quiz_results(request):
-    # (quiz_results implementation remains the same as initially provided)
     quiz_context = request.session.pop('quiz_context', None)
     if not quiz_context: return redirect('home')
 
@@ -504,7 +526,6 @@ def quiz_results(request):
 
 @login_required
 def reset_performance(request):
-    # (Remains the same)
     if request.method == 'POST':
         UserAnswer.objects.filter(user=request.user).delete()
         FlaggedQuestion.objects.filter(user=request.user).delete()
@@ -513,12 +534,19 @@ def reset_performance(request):
 
 @login_required
 def start_incorrect_quiz(request):
-    # FIX: Ensure the questions being reviewed are still LIVE
-    question_ids = list(UserAnswer.objects.filter(
-        user=request.user, 
-        is_correct=False,
-        question__status='LIVE' # Added filter
-    ).values_list('question_id', flat=True).distinct())
+    # FIX: Handle potential DatabaseError if 'status' column is missing
+    try:
+        question_ids = list(UserAnswer.objects.filter(
+            user=request.user, 
+            is_correct=False,
+            question__status='LIVE'
+        ).values_list('question_id', flat=True).distinct())
+    except DatabaseError:
+         logger.warning("DatabaseError in start_incorrect_quiz. 'status' column likely missing. Falling back.")
+         question_ids = list(UserAnswer.objects.filter(
+            user=request.user, 
+            is_correct=False
+        ).values_list('question_id', flat=True).distinct())
 
     if not question_ids:
         messages.success(request, "Great job! You have no incorrect answers to review (or the questions are currently unavailable).")
@@ -529,12 +557,18 @@ def start_incorrect_quiz(request):
 
 @login_required
 def start_flagged_quiz(request):
-    # FIX: Ensure the questions being reviewed are still LIVE
-    question_ids = list(FlaggedQuestion.objects.filter(
-        user=request.user,
-        question__status='LIVE' # Added filter
-    ).values_list('question_id', flat=True))
-
+    # FIX: Handle potential DatabaseError if 'status' column is missing
+    try:
+        question_ids = list(FlaggedQuestion.objects.filter(
+            user=request.user,
+            question__status='LIVE'
+        ).values_list('question_id', flat=True))
+    except DatabaseError:
+        logger.warning("DatabaseError in start_flagged_quiz. 'status' column likely missing. Falling back.")
+        question_ids = list(FlaggedQuestion.objects.filter(
+            user=request.user
+        ).values_list('question_id', flat=True))
+        
     if not question_ids:
         messages.info(request, "You have not flagged any questions for review (or the questions are currently unavailable).")
         return redirect('dashboard')
@@ -573,11 +607,8 @@ def report_question(request):
             return JsonResponse({'status': 'error', 'message': 'An internal error occurred.'}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
-# (The remaining views: create_checkout_session, success_page, cancel_page, stripe_webhook, handle_subscription_update, handle_subscription_deletion remain the same as initially provided.)
-
 @login_required
 def create_checkout_session(request):
-    # (create_checkout_session implementation remains the same)
     if request.method == 'POST':
         stripe.api_key = settings.STRIPE_SECRET_KEY
         price_id = request.POST.get('priceId')
@@ -587,7 +618,8 @@ def create_checkout_session(request):
             if not customer_id:
                 customer = stripe.Customer.create(
                     email=request.user.email,
-                    name=request.user.username,
+                    # Use full name if available, otherwise username
+                    name=request.user.get_full_name() or request.user.username,
                 )
                 customer_id = customer.id
                 profile.stripe_customer_id = customer_id
@@ -596,7 +628,8 @@ def create_checkout_session(request):
             cancel_url = request.build_absolute_uri(reverse('cancel_page'))
             checkout_session = stripe.checkout.Session.create(
                 customer=customer_id,
-                payment_method_types=['card'],
+                # Removed hardcoded 'card', allowing Stripe to choose based on settings
+                # payment_method_types=['card'], 
                 line_items=[{'price': price_id, 'quantity': 1,}],
                 mode='subscription',
                 success_url=success_url,

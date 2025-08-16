@@ -1,0 +1,97 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+
+<!-- Custom Dashboard Styles -->
+<style>
+    .dashboard-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    .dashboard-card {
+        background-color: #f8f9fa;
+        border: 1px solid #e3e6f0;
+        border-left: 4px solid #4e73df; /* Default blue color */
+        padding: 15px;
+        border-radius: 4px;
+        flex-grow: 1;
+        min-width: 200px;
+        box-shadow: 0 0.15rem 0.25rem rgba(0, 0, 0, 0.05);
+    }
+    .dashboard-card h3 {
+        font-size: 14px;
+        font-weight: bold;
+        color: #5a5c69;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+    }
+    .dashboard-card p {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+        margin: 0;
+    }
+    /* Specific colors */
+    .card-users { border-left-color: #36b9cc; }
+    .card-subscriptions { border-left-color: #1cc88a; }
+    .card-content { border-left-color: #6f42c1; }
+    .card-support { border-left-color: #e74a3b; }
+</style>
+
+<h2>Management Overview</h2>
+<div class="dashboard-container">
+    <!-- User Stats -->
+    <div class="dashboard-card card-users">
+        <h3>New Users (Today)</h3>
+        <p>{{ dashboard_stats.new_users_today|default:"0" }}</p>
+    </div>
+    <div class="dashboard-card card-users">
+        <h3>New Users (Last 7d)</h3>
+        <p>{{ dashboard_stats.new_users_7d|default:"0" }}</p>
+    </div>
+
+    <!-- Subscription Stats -->
+    <div class="dashboard-card card-subscriptions">
+        <h3>Active Subscriptions</h3>
+        <!-- Use default:"N/A" if data might be unavailable during migration -->
+        <p>{{ dashboard_stats.active_subscriptions|default:"N/A" }}</p>
+    </div>
+</div>
+
+<h2>Content and Activity</h2>
+<div class="dashboard-container">
+     <!-- Content Stats -->
+    <div class="dashboard-card card-content">
+        <h3>Live Questions</h3>
+        <p>{{ dashboard_stats.live_questions|default:"N/A" }}</p>
+    </div>
+    <div class="dashboard-card card-content">
+        <h3>Draft Questions</h3>
+        <p>{{ dashboard_stats.draft_questions|default:"N/A" }}</p>
+    </div>
+    <div class="dashboard-card card-content">
+        <h3>Total Answers Taken</h3>
+        <p>{{ dashboard_stats.total_answers_taken|default:"0" }}</p>
+    </div>
+</div>
+
+<h2>Support Center</h2>
+<div class="dashboard-container">
+    <!-- Support Stats -->
+    <div class="dashboard-card card-support">
+        <h3>Open Question Reports</h3>
+        <p>{{ dashboard_stats.open_reports|default:"N/A" }}</p>
+    </div>
+     <div class="dashboard-card card-support">
+        <h3>New Inquiries</h3>
+        <p>{{ dashboard_stats.new_inquiries|default:"N/A" }}</p>
+    </div>
+</div>
+
+<hr>
+<!-- Continue with the standard Django admin content (Recent Actions) -->
+{{ block.super }}
+
+{% endblock %}

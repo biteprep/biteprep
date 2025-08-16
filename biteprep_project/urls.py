@@ -12,6 +12,10 @@ from django.contrib.auth import views as auth_views
 # Imports for the Custom Dashboard
 from django.contrib.auth.models import User
 from quiz.models import Question, UserAnswer, QuestionReport, ContactInquiry
+# FIX: Import DatabaseError and logging
+from django.db.utils import DatabaseError
+import logging
+
 # We must ensure Profile is imported if it exists
 try:
     from users.models import Profile
@@ -21,54 +25,63 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta
 
+# Setup logger
+logger = logging.getLogger(__name__)
+
 # --- Custom Admin Site Definition ---
 
 class BitePrepOTPAdminSite(OTPAdminSite):
     def index(self, request, extra_context=None):
-        """Override the index view to add custom dashboard data."""
+        """Override the index view. Must be robust against DatabaseErrors during migration."""
         extra_context = extra_context or {}
 
         # Calculate KPIs
         today = timezone.now().date()
         last_7_days = today - timedelta(days=7)
 
-        # User Stats
-        new_users_today = User.objects.filter(date_joined__date=today).count()
-        new_users_7d = User.objects.filter(date_joined__date__gte=last_7_days).count()
-        
-        # Subscription Stats (Active means expiry date is today or in the future)
+        # Initialize defaults
+        new_users_today = 0
+        new_users_7d = 0
         active_subscriptions = 0
-        if Profile:
-            # Robustness: Check if Profile fields exist before querying (handles initial migrations)
-            if hasattr(Profile, 'membership') and hasattr(Profile, 'membership_expiry_date'):
+        total_answers_taken = 0
+        live_questions = 0
+        draft_questions = 0
+        open_reports = 0
+        new_inquiries = 0
+
+        # FIX: Wrap all database access in a try/except block for resilience
+        try:
+            # User Stats
+            new_users_today = User.objects.filter(date_joined__date=today).count()
+            new_users_7d = User.objects.filter(date_joined__date__gte=last_7_days).count()
+            
+            # Subscription Stats
+            if Profile:
                 active_subscriptions = Profile.objects.filter(
                     Q(membership='Monthly') | Q(membership='Annual'),
                     membership_expiry_date__gte=today
                 ).count()
 
-        # Content Stats
-        # Robustness: Check if 'status' field exists before querying it (handles initial migrations)
-        if hasattr(Question, 'status'):
-             live_questions = Question.objects.filter(status='LIVE').count()
-             draft_questions = Question.objects.filter(status='DRAFT').count()
-        else:
-             # Fallback if status field hasn't been migrated yet
-             live_questions = Question.objects.count()
-             draft_questions = 0
+            total_answers_taken = UserAnswer.objects.count()
 
-        total_answers_taken = UserAnswer.objects.count()
+            # Content and Support Stats (These rely on the 'status' column)
+            # We use a nested try/except specifically for the status column issue.
+            try:
+                live_questions = Question.objects.filter(status='LIVE').count()
+                draft_questions = Question.objects.filter(status='DRAFT').count()
+                open_reports = QuestionReport.objects.filter(status='OPEN').count()
+                new_inquiries = ContactInquiry.objects.filter(status='NEW').count()
+            except DatabaseError:
+                 # Fallback if the 'status' column specifically is missing
+                 logger.warning("DatabaseError (Status Columns) in Admin Dashboard. Migrations may be incomplete. Using fallback values.")
+                 live_questions = Question.objects.count() # Assume all are live if column missing
+                 # Reports/Inquiries cannot be counted without status, remain 0.
 
-        # Support Stats
-        # Robustness: Check if models have 'status' field before querying
-        if hasattr(QuestionReport, 'status'):
-            open_reports = QuestionReport.objects.filter(status='OPEN').count()
-        else:
-            open_reports = 0
+        except DatabaseError as e:
+            # Catch-all for broader database issues (e.g., tables don't exist yet)
+            logger.error(f"General DatabaseError in Admin Dashboard: {e}. Initial migrations likely pending.")
+            pass # All values remain at their defaults (0)
 
-        if hasattr(ContactInquiry, 'status'):
-             new_inquiries = ContactInquiry.objects.filter(status='NEW').count()
-        else:
-            new_inquiries = 0
 
         # Add stats to context
         extra_context['dashboard_stats'] = {
@@ -122,7 +135,6 @@ urlpatterns = [
         name='logout'),
 
     # Password Change (While logged in)
-    # FIX: Restored these routes
     path('accounts/password_change/',
          auth_views.PasswordChangeView.as_view(
              template_name='registration/password_change_form.html'
@@ -135,7 +147,6 @@ urlpatterns = [
          name='password_change_done'),
 
     # Password Reset (When forgotten) - Requires Email Configuration
-    # FIX: Restored these routes (This fixes the 500 error on the login page)
     path('accounts/password_reset/',
          auth_views.PasswordResetView.as_view(
              template_name='registration/password_reset_form.html',

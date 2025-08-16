@@ -37,11 +37,16 @@ SECRET_ADMIN_PATH = os.getenv('SECRET_ADMIN_PATH', 'manage-biteprep-secure-acces
 if not SECRET_ADMIN_PATH.endswith('/'):
     SECRET_ADMIN_PATH += '/'
 
+# FIX: Reordered INSTALLED_APPS to ensure admin_honeypot loads before django.contrib.admin
 INSTALLED_APPS = [
     'quiz.apps.QuizConfig',
     'users.apps.UsersConfig',
     'crispy_forms',
     'crispy_bootstrap5',
+    
+    # Must come BEFORE django.contrib.admin
+    'admin_honeypot',
+    
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -52,7 +57,6 @@ INSTALLED_APPS = [
     'storages', # Added for cloud media storage
     'django_otp',
     'django_otp.plugins.otp_totp',
-    'admin_honeypot',
     'simple_history',
     'impersonate',
     'rangefilter',
@@ -105,7 +109,6 @@ DATABASES = {
 }
 
 # Password validators
-# Restored standard Django validators
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -131,7 +134,12 @@ USE_TZ = True
 # Basic configuration - adjust based on your actual email service provider
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = os.getenv('EMAIL_HOST')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+# Use a try-except block for EMAIL_PORT in case the env var is missing or invalid
+try:
+    EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+except ValueError:
+    EMAIL_PORT = 587
+    
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
@@ -203,7 +211,6 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 IMPORT_EXPORT_USE_TRANSACTIONS = True
 
 # Security settings for production
-# FIX: Added actual security settings to resolve IndentationError
 if not DEBUG:
     # Ensure cookies are only sent over HTTPS
     SESSION_COOKIE_SECURE = True
@@ -247,6 +254,17 @@ if not DEBUG:
             'django': {
                 'handlers': ['console'],
                 'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+                'propagate': False,
+            },
+            # Added logger for the application itself
+            'quiz': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'propagate': False,
+            },
+            'users': {
+                'handlers': ['console'],
+                'level': 'INFO',
                 'propagate': False,
             },
         },
