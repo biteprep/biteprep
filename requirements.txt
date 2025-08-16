@@ -50,6 +50,5 @@ jmespath==1.0.1
 s3transfer==0.10.1
 
 # Dependencies for django-import-export (NEW)
-diff-match-patch==20230430
-tablib==3.8.0
-xlrd==2.0.1
+# REMOVED: diff-match-patch, tablib, xlrd.
+# These are managed automatically by django-import-export.
