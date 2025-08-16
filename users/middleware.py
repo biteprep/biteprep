@@ -1,5 +1,12 @@
 # users/middleware.py
 
+# Import ObjectDoesNotExist (crucial for the fix) and logging
+from django.db.models import ObjectDoesNotExist
+import logging
+
+# Set up logger
+logger = logging.getLogger(__name__)
+
 # Assuming Profile model is imported from the users app models
 # If Profile is defined elsewhere, adjust the import accordingly.
 try:
@@ -13,20 +20,29 @@ class EnsureProfileMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        # Ensure Profile model is available before proceeding
-        if Profile:
-            # Check if the user is authenticated
-            if request.user.is_authenticated:
-                # Use hasattr for a quick check if the profile relation is already accessed/cached
-                if not hasattr(request.user, 'profile'):
-                    # Use get_or_create for robustness against race conditions
-                    try:
-                        Profile.objects.get_or_create(user=request.user)
-                    except Exception as e:
-                        # Log the error if profile creation fails (e.g., database issues)
-                        # In a production environment, you might want to use a logger here
-                        print(f"Error creating profile for user {getattr(request.user, 'id', 'N/A')}: {e}")
-                        pass
+        # Check if Profile model is available AND the user is authenticated
+        if Profile and request.user.is_authenticated:
+            try:
+                # 1. Attempt to access the profile. 
+                # If it exists, Django caches it and moves on.
+                # We assign it to '_' because we don't need the object itself, just to trigger the lookup.
+                _ = request.user.profile
+            
+            except ObjectDoesNotExist:
+                # 2. If it does not exist, this specific exception is caught (instead of crashing).
+                # Now we create it robustly using get_or_create.
+                try:
+                    Profile.objects.get_or_create(user=request.user)
+                    # Log this event as it's often unexpected outside of the signup flow
+                    logger.warning(f"Middleware created missing profile for user: {request.user.username} (ID: {request.user.id})")
+                except Exception as e:
+                    # Handle potential database errors during creation (e.g., race conditions, connection issues)
+                    logger.error(f"CRITICAL: Error during Profile.get_or_create for user {request.user.id}: {e}", exc_info=True)
+            
+            except Exception as e:
+                 # 3. Handle any other unexpected errors during profile access
+                logger.error(f"Unexpected error accessing profile for user {request.user.id}: {e}", exc_info=True)
+
         
         response = self.get_response(request)
         return response
