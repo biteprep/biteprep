@@ -4,11 +4,13 @@ import random
 import stripe
 import json
 # Ensure datetime and timezone are imported correctly
-from datetime import date, datetime, timedelta
+# FIX: Removed 'date' from standard datetime import to enforce use of timezone.now().date()
+from datetime import datetime, timedelta
 from django.utils import timezone
 # Import Decimal for precise score calculations
 from decimal import Decimal, ROUND_HALF_UP
-from django.shortcuts import render, redirect, HttpResponse
+# Added get_object_or_404 for robustness
+from django.shortcuts import render, redirect, HttpResponse, get_object_or_404
 from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -28,7 +30,7 @@ except ImportError:
 
 import logging
 
-# Set up logging (Configured in settings.py)
+# Set up logging
 logger = logging.getLogger(__name__)
 
 MAX_QUESTIONS_PER_QUIZ = 500
@@ -67,7 +69,7 @@ def membership_page(request):
 
 @login_required
 def dashboard(request):
-    # (dashboard implementation remains the same)
+    # (dashboard implementation remains the same as initially provided)
     user_answers = UserAnswer.objects.filter(user=request.user)
     total_answered = user_answers.count()
     correct_answered = user_answers.filter(is_correct=True).count()
@@ -128,12 +130,16 @@ def dashboard(request):
     }
     return render(request, 'quiz/dashboard.html', context)
 
+
 @login_required
 def quiz_setup(request):
     if request.method == 'POST':
-        # (Validation and Question Selection logic remains the same)
         profile = request.user.profile
-        is_active_subscription = profile.membership_expiry_date and profile.membership_expiry_date >= date.today()
+
+        # FIX: Use timezone.now().date() for robust, timezone-aware date comparison
+        today = timezone.now().date()
+        is_active_subscription = profile.membership_expiry_date and profile.membership_expiry_date >= today
+        
         if not (profile.membership == 'Free' or is_active_subscription):
             messages.warning(request, "Your subscription has expired. Please renew your plan.")
             return redirect('membership_page')
@@ -144,7 +150,12 @@ def quiz_setup(request):
             return redirect('quiz_setup')
         
         question_filter = request.POST.get('question_filter', 'all')
-        questions = Question.objects.filter(subtopic__id__in=selected_subtopic_ids)
+
+        # FIX: CRITICAL - Ensure only LIVE questions are selected
+        questions = Question.objects.filter(
+            subtopic__id__in=selected_subtopic_ids,
+            status='LIVE'
+        )
         
         if question_filter == 'unanswered':
             answered_question_ids = UserAnswer.objects.filter(user=request.user).values_list('question_id', flat=True)
@@ -157,12 +168,12 @@ def quiz_setup(request):
         question_ids = list(questions.values_list('id', flat=True).distinct())
         
         if not question_ids:
-            messages.info(request, "No questions found for your selected topics and filters.")
+            messages.info(request, "No live questions found for your selected topics and filters.")
             return redirect('quiz_setup')
         
         random.shuffle(question_ids)
         
-        # Handle question count limits
+        # Handle question count limits (Remains the same)
         if profile.membership == 'Free':
             question_ids = question_ids[:10]
         elif request.POST.get('question_count_type') == 'custom':
@@ -177,7 +188,8 @@ def quiz_setup(request):
                  messages.warning(request, f"To ensure stability, the quiz has been limited to the maximum of {MAX_QUESTIONS_PER_QUIZ} questions.")
             question_ids = question_ids[:MAX_QUESTIONS_PER_QUIZ]
 
-        # Initialize quiz context
+
+        # Initialize quiz context (Remains the same)
         quiz_mode = request.POST.get('quiz_mode', 'quiz')
         quiz_context = {
             'question_ids': question_ids, 'total_questions': len(question_ids),
@@ -185,7 +197,7 @@ def quiz_setup(request):
             'penalty_value': 0.0
         }
 
-        # Handle Timer
+        # Handle Timer (Remains the same)
         if 'timer-toggle' in request.POST:
             try:
                 timer_minutes = int(request.POST.get('timer_minutes', 0))
@@ -194,8 +206,7 @@ def quiz_setup(request):
                     quiz_context['duration_seconds'] = timer_minutes * 60
             except (ValueError, TypeError): pass
 
-        # Handle Negative Marking (UPDATED: Now allowed for BOTH Quiz and Test modes)
-        # We removed the previous `if quiz_mode == 'test'` check.
+        # Handle Negative Marking (Remains the same)
         if 'negative-marking-toggle' in request.POST:
             try:
                 penalty = float(request.POST.get('penalty_value', 0.0))
@@ -205,12 +216,21 @@ def quiz_setup(request):
                 messages.warning(request, "Invalid penalty value ignored.")
                 pass
 
+
         request.session['quiz_context'] = quiz_context
         return redirect('start_quiz')
 
-    categories = Category.objects.prefetch_related('topics__subtopics').all()
+    # GET request: Display the form
+    # Optimization: Only show categories/topics that actually have LIVE questions
+    categories = Category.objects.prefetch_related(
+        'topics__subtopics'
+    ).filter(
+        topics__subtopics__questions__status='LIVE'
+    ).distinct()
+    
     context = {'categories': categories}
     return render(request, 'quiz/quiz_setup.html', context)
+
 
 @login_required
 def start_quiz(request):
@@ -224,7 +244,7 @@ def start_quiz(request):
 
 @login_required
 def quiz_player(request, question_index):
-    # (quiz_player implementation remains the same)
+    # (quiz_player implementation, with minor robustness improvements)
     quiz_context = request.session.get('quiz_context')
     if not quiz_context:
         messages.error(request, "Quiz session not found. Please start a new quiz.")
@@ -240,7 +260,7 @@ def quiz_player(request, question_index):
     quiz_mode = quiz_context.get('mode', 'quiz')
     is_feedback_mode = False
 
-    # Handle POST request
+    # Handle POST request (Remains the same)
     if request.method == 'POST':
         action = request.POST.get('action')
         submitted_answer_id_str = request.POST.get('answer')
@@ -282,6 +302,7 @@ def quiz_player(request, question_index):
         if action == 'next' and question_index < total_questions: return redirect('quiz_player', question_index=question_index + 1)
         if action == 'finish': return redirect('quiz_results')
 
+
     # Calculate Progress Percentage
     if total_questions > 0:
         progress_percentage = round((question_index / total_questions) * 100)
@@ -289,20 +310,37 @@ def quiz_player(request, question_index):
         progress_percentage = 0
 
     # Prepare context data
-    question = Question.objects.prefetch_related('answers').get(pk=question_id)
+    # Use get_object_or_404 for robustness
+    question = get_object_or_404(Question.objects.prefetch_related('answers'), pk=question_id)
+    
     user_answers = quiz_context.get('user_answers', {})
     user_answer_info = user_answers.get(str(question_id))
     seconds_remaining = None
 
     if 'start_time' in quiz_context:
-        start_time = datetime.fromisoformat(quiz_context['start_time'])
-        duration = timedelta(seconds=quiz_context.get('duration_seconds', 0))
-        time_passed = timezone.now() - start_time
-        seconds_remaining = max(0, int((duration - time_passed).total_seconds()))
-        if seconds_remaining <= 0:
-            messages.info(request, "Time is up! The quiz has been automatically submitted.")
-            return redirect('quiz_results')
+        try:
+            start_time = datetime.fromisoformat(quiz_context['start_time'])
+            duration = timedelta(seconds=quiz_context.get('duration_seconds', 0))
 
+            # Robust Timezone Handling
+            now = timezone.now()
+            # Check if start_time is naive (missing timezone info) while now is aware (standard in Django)
+            if timezone.is_naive(start_time) and timezone.is_aware(now):
+                 # If start_time somehow lost its timezone info, assume UTC (standard for ISO format)
+                 start_time = timezone.make_aware(start_time, timezone.utc)
+
+            time_passed = now - start_time
+            seconds_remaining = max(0, int((duration - time_passed).total_seconds()))
+            if seconds_remaining <= 0:
+                messages.info(request, "Time is up! The quiz has been automatically submitted.")
+                return redirect('quiz_results')
+        except (ValueError, TypeError) as e:
+             logger.error(f"Error processing timer data: {e}. Session data: {quiz_context.get('start_time')}", exc_info=True)
+             # Clear bad timer data
+             del quiz_context['start_time']
+             request.session.modified = True
+
+    # Navigator setup (Remains the same)
     user_flagged_ids = set(FlaggedQuestion.objects.filter(user=request.user, question_id__in=question_ids).values_list('question_id', flat=True))
     navigator_items = []
 
@@ -325,13 +363,19 @@ def quiz_player(request, question_index):
     if quiz_mode == 'quiz' and user_answer_info and user_answer_info.get('is_submitted'):
         is_feedback_mode = True
 
-    # Safely fetch user answer object
+    # Safely fetch user answer object (Remains the same)
     user_answer_obj = None
     if is_feedback_mode and user_answer_info and user_answer_info.get('answer_id'):
         try:
             user_answer_obj = Answer.objects.get(id=user_answer_info['answer_id'])
         except Answer.DoesNotExist:
             pass
+
+    # Ensure penalty value is a Decimal for template display
+    try:
+        penalty_value_decimal = Decimal(str(quiz_context.get('penalty_value', 0.0)))
+    except Exception:
+        penalty_value_decimal = Decimal(0)
 
     context = {
         'question': question,
@@ -346,14 +390,14 @@ def quiz_player(request, question_index):
         'flagged_questions': user_flagged_ids,
         'seconds_remaining': seconds_remaining,
         'navigator_items': navigator_items,
-        'penalty_value': quiz_context.get('penalty_value', 0.0),
+        'penalty_value': penalty_value_decimal,
     }
     return render(request, 'quiz/quiz_player.html', context)
 
 
 @login_required
 def quiz_results(request):
-    # (Optimized Implementation)
+    # (quiz_results implementation remains the same as initially provided)
     quiz_context = request.session.pop('quiz_context', None)
     if not quiz_context: return redirect('home')
 
@@ -457,10 +501,10 @@ def quiz_results(request):
     }
     return render(request, 'quiz/results.html', context)
 
-# (reset_performance, start_incorrect_quiz, start_flagged_quiz, report_question, create_checkout_session, success_page, cancel_page, stripe_webhook, handle_subscription_update, handle_subscription_deletion remain the same)
 
 @login_required
 def reset_performance(request):
+    # (Remains the same)
     if request.method == 'POST':
         UserAnswer.objects.filter(user=request.user).delete()
         FlaggedQuestion.objects.filter(user=request.user).delete()
@@ -469,9 +513,15 @@ def reset_performance(request):
 
 @login_required
 def start_incorrect_quiz(request):
-    question_ids = list(UserAnswer.objects.filter(user=request.user, is_correct=False).values_list('question_id', flat=True).distinct())
+    # FIX: Ensure the questions being reviewed are still LIVE
+    question_ids = list(UserAnswer.objects.filter(
+        user=request.user, 
+        is_correct=False,
+        question__status='LIVE' # Added filter
+    ).values_list('question_id', flat=True).distinct())
+
     if not question_ids:
-        messages.success(request, "Great job! You have no incorrect answers to review.")
+        messages.success(request, "Great job! You have no incorrect answers to review (or the questions are currently unavailable).")
         return redirect('dashboard')
     random.shuffle(question_ids)
     request.session['quiz_context'] = {'question_ids': question_ids, 'total_questions': len(question_ids), 'mode': 'quiz', 'user_answers': {}, 'penalty_value': 0.0}
@@ -479,9 +529,14 @@ def start_incorrect_quiz(request):
 
 @login_required
 def start_flagged_quiz(request):
-    question_ids = list(FlaggedQuestion.objects.filter(user=request.user).values_list('question_id', flat=True))
+    # FIX: Ensure the questions being reviewed are still LIVE
+    question_ids = list(FlaggedQuestion.objects.filter(
+        user=request.user,
+        question__status='LIVE' # Added filter
+    ).values_list('question_id', flat=True))
+
     if not question_ids:
-        messages.info(request, "You have not flagged any questions for review.")
+        messages.info(request, "You have not flagged any questions for review (or the questions are currently unavailable).")
         return redirect('dashboard')
     random.shuffle(question_ids)
     request.session['quiz_context'] = {'question_ids': question_ids, 'total_questions': len(question_ids), 'mode': 'quiz', 'user_answers': {}, 'penalty_value': 0.0}
@@ -489,7 +544,6 @@ def start_flagged_quiz(request):
 
 
 @login_required
-# REMOVED @csrf_exempt: The frontend JS sends the CSRF token correctly.
 def report_question(request):
     if request.method == 'POST':
         try:
@@ -503,7 +557,9 @@ def report_question(request):
             if not question_id or not reason:
                 return JsonResponse({'status': 'error', 'message': 'Missing question ID or reason.'}, status=400)
 
-            question = Question.objects.get(pk=question_id)
+            # Use get_object_or_404
+            question = get_object_or_404(Question, pk=question_id)
+
             QuestionReport.objects.update_or_create(
                 user=request.user,
                 question=question,
@@ -512,12 +568,12 @@ def report_question(request):
             return JsonResponse({'status': 'success', 'message': 'Report submitted successfully!'})
         except json.JSONDecodeError:
              return JsonResponse({'status': 'error', 'message': 'Invalid JSON payload.'}, status=400)
-        except Question.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Question not found.'}, status=404)
         except Exception as e:
             logger.error(f"Error in report_question by user {request.user.id}: {e}", exc_info=True)
             return JsonResponse({'status': 'error', 'message': 'An internal error occurred.'}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
+
+# (The remaining views: create_checkout_session, success_page, cancel_page, stripe_webhook, handle_subscription_update, handle_subscription_deletion remain the same as initially provided.)
 
 @login_required
 def create_checkout_session(request):
@@ -560,8 +616,6 @@ def cancel_page(request):
     return render(request, 'quiz/payment_canceled.html')
 
 # --- STRIPE WEBHOOK IMPLEMENTATION ---
-# (Webhook implementation remains the same)
-
 @csrf_exempt
 def stripe_webhook(request):
     stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -635,8 +689,7 @@ def handle_subscription_update(customer_id, subscription):
         profile.save()
         logger.info(f"Updated profile {profile.id} (User: {profile.user.username}): Granted {new_membership} access until {expiry_date}.")
 
-    # For 'past_due', 'canceled', 'unpaid': Access is handled by checking expiry_date dynamically.
-    
+
 def handle_subscription_deletion(customer_id):
     """Handles the complete deletion of a subscription."""
     if not Profile: return
