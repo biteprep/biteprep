@@ -24,13 +24,14 @@ stripe==12.3.0
 
 # Security Packages
 django-otp==1.6.1
-django-admin-honeypot1==1.2.0  # CORRECTED: Using the maintained fork
+django-admin-honeypot1==1.2.0
 qrcode==7.4.2
 
 # Admin Enhancements & Auditing
 django-simple-history==3.10.1
 django-impersonate==1.9.2
 django-admin-rangefilter==0.11.2
+django-import-export==3.5.0 # NEW: For bulk data management in Admin
 
 # Cloud Storage
 django-storages==1.14.3
@@ -47,3 +48,8 @@ typing_extensions==4.14.1
 urllib3==2.5.0
 jmespath==1.0.1
 s3transfer==0.10.1
+
+# Dependencies for django-import-export (NEW)
+diff-match-patch==20230430
+tablib==4.3.0
+xlrd==2.0.1

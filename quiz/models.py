@@ -40,10 +40,20 @@ class Subtopic(models.Model):
 
 # Model for the actual questions
 class Question(models.Model):
+    # NEW: Define Status Workflow
+    STATUS_CHOICES = [
+        ('DRAFT', 'Draft (Admin Only)'),
+        ('LIVE', 'Live (Visible to Users)'),
+    ]
+
     subtopic = models.ForeignKey(Subtopic, on_delete=models.CASCADE, related_name='questions')
     question_text = models.TextField()
     question_image = models.ImageField(upload_to='question_images/', blank=True, null=True)
     explanation = models.TextField(help_text="Detailed explanation for the correct answer.")
+    
+    # NEW: Status field, defaults to DRAFT
+    status = models.CharField(max_length=5, choices=STATUS_CHOICES, default='DRAFT', help_text="Only 'Live' questions are shown to users.")
+    
     history = HistoricalRecords()
 
     def __str__(self):
