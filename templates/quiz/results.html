@@ -1,3 +1,4 @@
+<!-- templates/quiz/results.html -->
 {% extends "base.html" %}
 
 {% block title %}Quiz Results - BitePrep{% endblock %}
@@ -99,21 +100,15 @@
                 {% endif %}
 
                 <!-- Answers List -->
-                <ul class="list-group mb-4">
+                <!-- UPDATED: Added answer-list-group -->
+                <ul class="list-group mb-4 answer-list-group">
                     {% for answer in item.question.answers.all %}
                         <li class="list-group-item d-flex justify-content-between align-items-center
                             {% if answer.is_correct %}list-group-item-success{% endif %}
                             {% if item.user_answer and item.user_answer.id == answer.id and not item.user_answer.is_correct %}list-group-item-danger{% endif %}
                         ">
                             <span>
-                                <!-- Added icons for clarity -->
-                                 {% if answer.is_correct %}
-                                    <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                {% elif item.user_answer and item.user_answer.id == answer.id %}
-                                     <i class="bi bi-x-circle-fill text-danger me-2"></i>
-                                {% else %}
-                                     <i class="bi bi-circle text-muted me-2"></i>
-                                {% endif %}
+                                <!-- UPDATED: Icons removed, CSS handles visualization -->
                                 {{ answer.answer_text }}
                             </span>
 
