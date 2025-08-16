@@ -51,5 +51,5 @@ s3transfer==0.10.1
 
 # Dependencies for django-import-export (NEW)
 diff-match-patch==20230430
-tablib==4.3.0
+tablib==3.8.0
 xlrd==2.0.1
