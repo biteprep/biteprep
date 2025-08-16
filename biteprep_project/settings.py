@@ -24,7 +24,12 @@ if not SECRET_KEY:
         raise ValueError("FATAL: The SECRET_KEY environment variable must be set in production.")
 
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
+# Update ALLOWED_HOSTS to include the Render domain if deploying there
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+RENDER_HOSTNAME = os.getenv('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_HOSTNAME)
+
 
 # SECURITY: Load the secret admin path from env vars. Provide a default if missing.
 SECRET_ADMIN_PATH = os.getenv('SECRET_ADMIN_PATH', 'manage-biteprep-secure-access/')
@@ -55,7 +60,6 @@ INSTALLED_APPS = [
 ]
 
 # MIDDLEWARE
-# (Middleware remains the same)
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -101,8 +105,21 @@ DATABASES = {
 }
 
 # Password validators
-# (Validators remain the same)
-# ...
+# Restored standard Django validators
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
@@ -111,16 +128,65 @@ USE_I18N = True
 USE_TZ = True
 
 # --- Email Configuration (Handles Deferral Securely) ---
-# (Email configuration remains the same)
-# ...
+# Basic configuration - adjust based on your actual email service provider
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'webmaster@localhost')
+
 
 # --- Static and Media Files Configuration ---
-# (Static/Media configuration remains the same)
-# ...
+STATIC_URL = 'static/'
+# The location where collectstatic will put files (required for deployment)
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 
 # --- Cloud Storage Configuration (Handles Deferral Securely) ---
-# (Cloud Storage configuration remains the same)
-# ...
+# Determine if we should use cloud storage (e.g., AWS S3)
+USE_S3 = os.getenv('USE_S3', 'False') == 'True'
+
+if USE_S3:
+    # AWS S3 Configuration (Requires setting corresponding environment variables)
+    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME')
+    AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+
+    # S3 Static files configuration
+    STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
+    STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/static/'
+
+    # S3 Media files configuration
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+    
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+             "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
+        },
+    }
+
+else:
+    # Local storage configuration with Whitenoise for static files
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            # Use Whitenoise for efficient static file serving in production (Crucial for Render)
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -137,14 +203,51 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 IMPORT_EXPORT_USE_TRANSACTIONS = True
 
 # Security settings for production
+# FIX: Added actual security settings to resolve IndentationError
 if not DEBUG:
-    # ... (Security settings remain the same)
+    # Ensure cookies are only sent over HTTPS
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    # HSTS (HTTP Strict Transport Security) - tells browsers to only use HTTPS
+    # Start short (e.g., 1 hour) and increase once confirmed working.
+    SECURE_HSTS_SECONDS = 3600
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
+    # Prevent the browser from guessing the content type
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
+    # Optional: Redirect HTTP to HTTPS. Often handled by the hosting platform (like Render).
+    # SECURE_SSL_REDIRECT = True
 
 
 # --- Impersonation Security Settings ---
-# (Impersonation settings remain the same)
-# ...
+IMPERSONATE = {
+    'REDIRECT_URL': '/dashboard/',
+}
+
 
 # --- Logging Configuration (Production Ready) ---
-# (Logging configuration remains the same)
-# ...
+# Basic logging is set at the top. Advanced configuration for production:
+if not DEBUG:
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
+        },
+        'root': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+        },
+        'loggers': {
+            'django': {
+                'handlers': ['console'],
+                'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+                'propagate': False,
+            },
+        },
+    }
