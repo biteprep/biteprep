@@ -14,13 +14,15 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q
+# FIX: Added Prefetch to imports
+from django.db.models import Count, Q, Prefetch
 # FIX: Import DatabaseError
 from django.db.utils import DatabaseError
 from django.db.models.functions import TruncDate
 from django.contrib import messages
 from django.urls import reverse
-from .models import Category, Question, Answer, UserAnswer, FlaggedQuestion, QuestionReport
+# FIX: Added Topic and Subtopic to imports for optimization
+from .models import Category, Topic, Subtopic, Question, Answer, UserAnswer, FlaggedQuestion, QuestionReport
 from .forms import ContactForm
 
 # Import Profile model for webhook processing
@@ -32,11 +34,13 @@ except ImportError:
 import logging
 
 # Set up logging
+# Use __name__ to get the logger specific to this module (e.g., 'quiz.views')
 logger = logging.getLogger(__name__)
 
 MAX_QUESTIONS_PER_QUIZ = 500
 
-# (landing_page, contact_page, terms_page, privacy_page, cookie_page, membership_page remain the same)
+# --- Helper Views (Landing, Contact, Legal, Membership) ---
+
 def landing_page(request):
     return render(request, 'quiz/landing_page.html')
 
@@ -51,7 +55,10 @@ def contact_page(request):
         initial_data = {}
         if request.user.is_authenticated:
             # Use getattr for robustness in case name fields are customized later
-            display_name = getattr(request.user, 'get_full_name', request.user.username)()
+            # Try to get full name, fallback to username
+            display_name = request.user.get_full_name()
+            if not display_name:
+                display_name = request.user.username
             initial_data = {'name': display_name, 'email': request.user.email}
         form = ContactForm(initial=initial_data)
     return render(request, 'quiz/contact.html', {'form': form})
@@ -70,9 +77,10 @@ def membership_page(request):
     return render(request, 'quiz/membership_page.html')
 
 
+# --- Dashboard View ---
+
 @login_required
 def dashboard(request):
-    # (dashboard implementation remains the same as initially provided)
     user_answers = UserAnswer.objects.filter(user=request.user)
     total_answered = user_answers.count()
     correct_answered = user_answers.filter(is_correct=True).count()
@@ -133,6 +141,8 @@ def dashboard(request):
     }
     return render(request, 'quiz/dashboard.html', context)
 
+
+# --- Quiz Flow Views ---
 
 @login_required
 def quiz_setup(request):
@@ -232,17 +242,30 @@ def quiz_setup(request):
         return redirect('start_quiz')
 
     # GET request: Display the form
-    # FIX: Handle the case where the 'status' column might be missing when loading the page.
+    # FIX: Optimized the query using Prefetch objects to prevent timeouts in production.
     try:
-        # Attempt the optimized query filtering for LIVE questions
-        categories = Category.objects.prefetch_related(
-            'topics__subtopics'
-        ).filter(
+        # 1. Define Prefetch for Subtopics: Only fetch subtopics that have LIVE questions.
+        live_subtopics = Prefetch(
+            'subtopics',
+            queryset=Subtopic.objects.filter(questions__status='LIVE').distinct()
+        )
+        
+        # 2. Define Prefetch for Topics: Only fetch topics that have LIVE questions, 
+        #    AND apply the live_subtopics prefetch to them.
+        live_topics = Prefetch(
+            'topics',
+            queryset=Topic.objects.filter(subtopics__questions__status='LIVE').distinct().prefetch_related(live_subtopics)
+        )
+
+        # 3. Fetch Categories: Only fetch categories that have LIVE questions,
+        #    AND apply the live_topics prefetch.
+        categories = Category.objects.filter(
             topics__subtopics__questions__status='LIVE'
-        ).distinct()
+        ).distinct().prefetch_related(live_topics)
+
     except DatabaseError:
-        # Fallback if the 'status' column is missing.
-        logger.warning("DatabaseError in quiz_setup (GET). 'status' column likely missing. Falling back to loading all categories.")
+        # Fallback if the 'status' column is missing (maintains resilience during deployment).
+        logger.warning("DatabaseError in quiz_setup (GET). 'status' column likely missing. Falling back to loading all categories (less efficient).")
         categories = Category.objects.prefetch_related('topics__subtopics').all()
 
     
@@ -275,8 +298,12 @@ def quiz_player(request, question_index):
         if question_index == total_questions + 1:
              return redirect('quiz_results')
         # Handle other invalid indices (e.g., 0 or very large numbers)
-        messages.warning(request, "Invalid question index. Redirecting to quiz start.")
-        return redirect('quiz_player', question_index=1)
+        # If there are questions, redirect to the start, otherwise redirect to setup.
+        if total_questions > 0:
+            messages.warning(request, "Invalid question index. Redirecting to quiz start.")
+            return redirect('quiz_player', question_index=1)
+        else:
+            return redirect('quiz_setup')
 
 
     question_id = question_ids[question_index - 1]
@@ -476,7 +503,7 @@ def quiz_results(request):
                     incorrect_count += 1
 
             # Question was NOT answered (skipped)
-            # UPDATED: In 'Test' mode OR if negative marking is active (regardless of mode), unanswered questions count as incorrect for scoring.
+            # In 'Test' mode OR if negative marking is active, unanswered questions count as incorrect for scoring.
             elif quiz_context.get('mode') == 'test' or penalty_value > 0:
                  incorrect_count += 1
 
@@ -523,6 +550,8 @@ def quiz_results(request):
     }
     return render(request, 'quiz/results.html', context)
 
+
+# --- Dashboard Action Views ---
 
 @login_required
 def reset_performance(request):
@@ -577,6 +606,8 @@ def start_flagged_quiz(request):
     return redirect('start_quiz')
 
 
+# --- AJAX Views ---
+
 @login_required
 def report_question(request):
     if request.method == 'POST':
@@ -607,6 +638,9 @@ def report_question(request):
             return JsonResponse({'status': 'error', 'message': 'An internal error occurred.'}, status=500)
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 
+
+# --- Stripe Payment Views ---
+
 @login_required
 def create_checkout_session(request):
     if request.method == 'POST':
@@ -616,10 +650,11 @@ def create_checkout_session(request):
             profile = request.user.profile
             customer_id = profile.stripe_customer_id
             if not customer_id:
+                # Use full name if available, otherwise username
+                customer_name = request.user.get_full_name() or request.user.username
                 customer = stripe.Customer.create(
                     email=request.user.email,
-                    # Use full name if available, otherwise username
-                    name=request.user.get_full_name() or request.user.username,
+                    name=customer_name,
                 )
                 customer_id = customer.id
                 profile.stripe_customer_id = customer_id
@@ -671,6 +706,7 @@ def stripe_webhook(request):
         # Invalid payload
         logger.warning(f"Invalid Stripe payload: {e}")
         return HttpResponse(status=400)
+    # Use the specific exception class for signature errors
     except stripe.error.SignatureVerificationError as e:
         # Invalid signature
         logger.warning(f"Invalid Stripe signature: {e}")

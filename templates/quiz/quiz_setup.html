@@ -1,3 +1,4 @@
+<!-- quiz/quiz_setup.html -->
 {% extends "base.html" %}
 
 {% block title %}Quiz Setup - BitePrep{% endblock %}
@@ -100,8 +101,8 @@
 
                             <!-- Negative Marking (Enabled) -->
                             <div class="col-sm-6">
-                                <!-- Added tooltip explaining availability -->
-                                 <h6 data-bs-toggle="tooltip" data-bs-placement="top" title="Only available in Test Mode">
+                                <!-- Updated tooltip text -->
+                                 <h6 data-bs-toggle="tooltip" data-bs-placement="top" title="Available in both Quiz and Test Modes">
                                     <i class="bi bi-dash-circle me-2"></i>Negative Marking
                                 </h6>
                                 <!-- Added ID to the wrapper for JS targeting -->
@@ -111,7 +112,8 @@
                                         <label class="form-check-label" for="negative-marking-toggle">Enable</label>
                                     </div>
                                     <!-- Values represent the amount subtracted -->
-                                    <select name="penalty_value" id="penalty-select" class="form-select">
+                                    <!-- Ensure disabled by default in HTML, JS will manage it -->
+                                    <select name="penalty_value" id="penalty-select" class="form-select" disabled>
                                         <option value="0.25">− 0.25</option>
                                         <option value="0.50" selected>− 0.50</option>
                                         <option value="1.00">− 1.00</option>
@@ -153,14 +155,20 @@
                                             <label class="form-check-label" for="subtopic_{{ subtopic.id }}">{{ subtopic.name }}</label>
                                         </li>
                                     {% empty %}
-                                        <li class="text-muted">No subtopics available.</li>
+                                        <!-- Updated message for clarity based on optimized query -->
+                                        <li class="text-muted">No live subtopics available in this topic.</li>
                                     {% endfor %}
                                 </ul>
                             {% empty %}
-                                <p class="text-muted">No topics available in this category.</p>
+                                <!-- Updated message for clarity based on optimized query -->
+                                <p class="text-muted">No live topics available in this category.</p>
                             {% endfor %}
                         </div>
                     </div>
+                </div>
+            {% empty %}
+                <div class="alert alert-warning">
+                    No categories with live questions found. If you just deployed, migrations may still be running. Please wait a moment and refresh the page, or contact support.
                 </div>
             {% endfor %}
         </div>
@@ -171,104 +179,81 @@
         </div>
     </form>
 
-    {% block scripts %}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Bootstrap tooltips (for the "Test Mode Only" hint)
-            if (typeof bootstrap !== 'undefined') {
-                var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-                var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                    return new bootstrap.Tooltip(tooltipTriggerEl)
-                });
-            }
+<!-- FIX: Moved the closing content block tag here -->
+{% endblock %}
 
-            // --- Configuration Interactivity ---
-
-            // 1. Custom Question Count
-            const countSelect = document.getElementById('question_count_select');
-            const countInput = document.getElementById('question-count-input');
-            if (countSelect) {
-                countSelect.addEventListener('change', function() {
-                    countInput.style.display = (this.value === 'custom') ? 'block' : 'none';
-                    if (this.value === 'custom') countInput.focus();
-                });
-            }
-
-            // 2. Timer Toggle
-            const timerToggle = document.getElementById('timer-toggle');
-            const timerInput = document.getElementById('timer-input');
-            if (timerToggle) {
-                timerToggle.addEventListener('change', function() {
-                    timerInput.disabled = !this.checked;
-                    if (this.checked) timerInput.focus();
-                });
-            }
-
-            // 3. Negative Marking Toggle
-            const penaltyToggle = document.getElementById('negative-marking-toggle');
-            const penaltySelect = document.getElementById('penalty-select');
-             if (penaltyToggle) {
-                penaltyToggle.addEventListener('change', function() {
-                    // The select dropdown state depends on the toggle state AND the mode
-                    if (document.getElementById('modeTest').checked) {
-                         penaltySelect.disabled = !this.checked;
-                    }
-                });
-            }
-
-            // 4. Mode Selector (Impacts Negative Marking Availability)
-            const modeSelector = document.getElementById('quiz-mode-selector');
-            const penaltyWrapper = document.getElementById('negative-marking-wrapper');
-            const modeQuiz = document.getElementById('modeQuiz');
-
-            function updatePenaltyAvailability() {
-                const isQuizMode = modeQuiz.checked;
-
-                if (isQuizMode) {
-                    // Disable and visually fade in Quiz Mode
-                    penaltyWrapper.style.opacity = '0.5';
-                    penaltyWrapper.setAttribute('aria-disabled', 'true');
-                    penaltyToggle.disabled = true;
-                    penaltySelect.disabled = true;
-                    penaltyToggle.checked = false; // Uncheck if switching back from Test Mode
-                } else {
-                    // Enable in Test Mode
-                    penaltyWrapper.style.opacity = '1';
-                    penaltyWrapper.removeAttribute('aria-disabled');
-                    penaltyToggle.disabled = false;
-                    // The select dropdown state depends on the toggle state
-                    penaltySelect.disabled = !penaltyToggle.checked;
-                }
-            }
-
-            if (modeSelector) {
-                modeSelector.addEventListener('change', updatePenaltyAvailability);
-            }
-            // Initial check on page load
-            updatePenaltyAvailability();
-
-
-            // --- Topic Selection Logic ---
-
-            // Logic for "Select All" topics
-            document.querySelectorAll('.select-all-topic').forEach(function(selectAll) {
-                selectAll.addEventListener('change', function() {
-                    const topicId = this.dataset.topicId;
-                    document.querySelectorAll(`.subtopic-checkbox[data-parent-topic='${topicId}']`).forEach(function(subtopic) {
-                        subtopic.checked = selectAll.checked;
-                    });
-                });
+<!-- FIX: Moved the scripts block outside the content block -->
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Bootstrap tooltips
+        if (typeof bootstrap !== 'undefined') {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
             });
+        }
 
-            // Logic to update "Select All" status if all subtopics are manually checked
-            document.querySelectorAll('.subtopic-checkbox').forEach(function(subtopic) {
-                subtopic.addEventListener('change', function() {
-                    const topicId = this.dataset.parentTopic;
-                    const allChecked = document.querySelectorAll(`.subtopic-checkbox[data-parent-topic='${topicId}']:checked`).length === document.querySelectorAll(`.subtopic-checkbox[data-parent-topic='${topicId}']`).length;
-                    document.getElementById(`select-all-${topicId}`).checked = allChecked;
+        // --- Configuration Interactivity ---
+
+        // 1. Custom Question Count
+        const countSelect = document.getElementById('question_count_select');
+        const countInput = document.getElementById('question-count-input');
+        if (countSelect) {
+            countSelect.addEventListener('change', function() {
+                countInput.style.display = (this.value === 'custom') ? 'block' : 'none';
+                if (this.value === 'custom') countInput.focus();
+            });
+        }
+
+        // 2. Timer Toggle
+        const timerToggle = document.getElementById('timer-toggle');
+        const timerInput = document.getElementById('timer-input');
+        if (timerToggle) {
+            timerToggle.addEventListener('change', function() {
+                timerInput.disabled = !this.checked;
+                if (this.checked) timerInput.focus();
+            });
+        }
+
+        // 3. Negative Marking Toggle (Updated logic as it's now allowed in both modes)
+        const penaltyToggle = document.getElementById('negative-marking-toggle');
+        const penaltySelect = document.getElementById('penalty-select');
+        
+        if (penaltyToggle) {
+            penaltyToggle.addEventListener('change', function() {
+                // The select dropdown is simply enabled/disabled by the toggle.
+                penaltySelect.disabled = !this.checked;
+                if (this.checked) penaltySelect.focus();
+            });
+        }
+        
+        // Ensure the initial state of the penalty select is correct (disabled if toggle is off)
+        if (penaltySelect && penaltyToggle) {
+             penaltySelect.disabled = !penaltyToggle.checked;
+        }
+
+
+        // --- Topic Selection Logic ---
+
+        // Logic for "Select All" topics
+        document.querySelectorAll('.select-all-topic').forEach(function(selectAll) {
+            selectAll.addEventListener('change', function() {
+                const topicId = this.dataset.topicId;
+                document.querySelectorAll(`.subtopic-checkbox[data-parent-topic='${topicId}']`).forEach(function(subtopic) {
+                    subtopic.checked = selectAll.checked;
                 });
             });
         });
-    </script>
-    {% endblock %}
+
+        // Logic to update "Select All" status if all subtopics are manually checked
+        document.querySelectorAll('.subtopic-checkbox').forEach(function(subtopic) {
+            subtopic.addEventListener('change', function() {
+                const topicId = this.dataset.parentTopic;
+                const allChecked = document.querySelectorAll(`.subtopic-checkbox[data-parent-topic='${topicId}']:checked`).length === document.querySelectorAll(`.subtopic-checkbox[data-parent-topic='${topicId}']`).length;
+                document.getElementById(`select-all-${topicId}`).checked = allChecked;
+            });
+        });
+    });
+</script>
 {% endblock %}
