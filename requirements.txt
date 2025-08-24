@@ -25,7 +25,7 @@ stripe==12.3.0
 # Security Packages
 django-otp==1.6.1
 # FIX: Changed from django-admin-honeypot1 to the correct package name and updated version
-django-admin-honeypot==1.1.0
+django-admin-honeypot-updated-2021==1.2.0
 qrcode==7.4.2
 
 # Admin Enhancements & Auditing
