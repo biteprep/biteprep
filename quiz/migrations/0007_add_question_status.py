@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     # This dependency name is based on the migration files provided in the initial prompt.
     dependencies = [
         # IMPORTANT: Ensure this matches the actual filename of migration 0006 in your project
-        ('quiz', '0006_historicalanswer_historicalcategory_historicalcontactinquiry_historicalquestion_historicalquestionreport_histor'),
+        ('quiz', '0006_historicalanswer_historicalcategory_and_more.py'),
     ]
 
     operations = [
