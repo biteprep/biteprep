@@ -75,7 +75,7 @@
                         <div class="list-group answer-list-group">
                             {% for answer in question.answers.all %}
                             <label class="list-group-item list-group-item-action answer-option" data-answer-id="{{ answer.id }}">
-                                <input class="form-check-input me-3" type="radio" name="answer" value="{{ answer.id }}" 
+                                <input class="form-check-input visually-hidden" type="radio" name="answer" value="{{ answer.id }}" 
                                        {% if user_selected_answer_id == answer.id %}checked{% endif %}>
                                 <span>{{ answer.answer_text }}</span>
                             </label>

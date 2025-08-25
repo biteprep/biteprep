@@ -450,6 +450,7 @@ a:hover {
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
+    padding: 1rem 1.5rem !important;
 }
 
 .answer-option:hover {
@@ -457,20 +458,31 @@ a:hover {
     background-color: rgba(var(--bs-primary-rgb), 0.05);
 }
 
+/* Hide radio buttons completely */
 .answer-option input[type="radio"] {
-    cursor: pointer;
-    margin-top: 0.25rem;
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .answer-option.selected {
     background-color: rgba(var(--bs-primary-rgb), 0.15) !important;
     border-color: var(--bs-primary) !important;
     border-width: 2px;
+    font-weight: 500;
+}
+
+.answer-option.selected span {
+    color: var(--bs-primary);
 }
 
 [data-bs-theme="dark"] .answer-option.selected {
     background-color: rgba(140, 158, 255, 0.2) !important;
     border-color: #4a90e2 !important;
+}
+
+[data-bs-theme="dark"] .answer-option.selected span {
+    color: var(--bs-primary);
 }
 
 [data-bs-theme="dark"] .answer-option:hover {
