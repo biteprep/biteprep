@@ -1,7 +1,6 @@
 /* quiz/static/quiz/css/custom.css */
 
 /* --- 0. Root Variables & Theme Integration --- */
-
 /* Define the modern aesthetic variables (BitePrep Palette) */
 :root {
     /* Refined, deeper blue palette for a professional look */
@@ -9,29 +8,28 @@
     --bp-primary-hover-light: #2e409e;
     --bp-primary-dark: #8c9eff; /* Brighter accent for dark mode */
     --bp-primary-hover-dark: #a3b5ff;
-
+    
     /* Light, airy background - slightly off-white for less glare */
     --bp-background-light: #f8f9fc;
     --bp-surface-light: #ffffff;
-
+    
     /* Deep charcoal/navy for dark mode */
     --bp-background-dark: #12121a;
     /* Slightly lighter surface for cards/nav/modals in dark mode */
     --bp-surface-dark: #1e1e2a;
-
+    
     /* Modern, subtle, layered shadows */
     --shadow-sm-light: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
     --shadow-md-light: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg-light: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Enhanced for hover */
-
+    --shadow-lg-light: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --shadow-sm-dark: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md-dark: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.4);
     --shadow-lg-dark: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -2px rgba(0, 0, 0, 0.5);
-
+    
     /* Smooth transition definition */
     --transition-fast: all 0.15s ease-in-out;
     --transition-smooth: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
-
+    
     /* Define radii for modernization - slightly increased for a softer look */
     --radius-sm: 6px;
     --radius-md: 10px;
@@ -44,15 +42,15 @@
     --bs-primary: var(--bp-primary-light);
     --bs-primary-rgb: 58, 80, 199;
     --bs-body-bg: var(--bp-background-light);
-    --bs-body-color: #333; /* Slightly darker text for better readability */
-
+    --bs-body-color: #333;
+    
     /* Ensure surfaces (cards, nav) are pure white */
     --bs-tertiary-bg: var(--bp-surface-light);
     --bs-card-bg: var(--bp-surface-light);
     --bs-list-group-bg: var(--bp-surface-light);
     --bs-accordion-bg: var(--bp-surface-light);
     --bs-dropdown-bg: var(--bp-surface-light);
-
+    
     /* Assigning aesthetic variables */
     --shadow-sm: var(--shadow-sm-light);
     --shadow-md: var(--shadow-md-light);
@@ -65,23 +63,23 @@
     /* Inject the BitePrep palette into Bootstrap variables */
     --bs-primary: var(--bp-primary-dark);
     --bs-primary-rgb: 140, 158, 255;
-
+    
     /* Core Background/Text */
     --bs-body-bg: var(--bp-background-dark);
     --bs-body-color: #e0e0e0;
     --bs-emphasis-color: #ffffff;
-
+    
     /* CRITICAL: Override surface/component backgrounds. */
     --bs-tertiary-bg: var(--bp-surface-dark);
     --bs-card-bg: var(--bp-surface-dark);
     --bs-accordion-bg: var(--bp-surface-dark);
     --bs-list-group-bg: var(--bp-surface-dark);
     --bs-dropdown-bg: var(--bp-surface-dark);
-
+    
     /* Ensure borders are visible but subtle */
     --bs-border-color: rgba(255, 255, 255, 0.1);
     --bs-card-border-color: var(--bs-border-color);
-
+    
     /* Assigning aesthetic variables */
     --shadow-sm: var(--shadow-sm-dark);
     --shadow-md: var(--shadow-md-dark);
@@ -90,7 +88,6 @@
 }
 
 /* --- 1. Base Styles & Typography --- */
-/* (Sections 1-5 remain the same) */
 body {
     font-family: 'Inter', sans-serif;
     transition: background-color 0.3s, color 0.3s;
@@ -126,7 +123,6 @@ a:hover {
 }
 
 /* --- 2. Layout & Spacing (Breathing Room) --- */
-
 .content-container {
     /* Increased spacing for a less cramped feel */
     margin-top: 3.5rem;
@@ -134,7 +130,6 @@ a:hover {
 }
 
 /* --- 3. Component Modernization & Interactivity --- */
-
 /* Navbar */
 .navbar {
     padding-top: 1rem;
@@ -145,7 +140,6 @@ a:hover {
     box-shadow: var(--shadow-sm);
     border-bottom: none;
 }
-
 
 .navbar-brand {
     font-weight: 800 !important;
@@ -165,14 +159,12 @@ a:hover {
 }
 
 /* ENHANCED INTERACTIVITY: Add a subtle lift effect on hover */
-/* We apply this hover effect globally, as it enhances the feel. */
 .card:hover {
     /* Slightly lift the card for a modern interactive feel */
     transform: translateY(-5px);
     /* Enhance the shadow */
     box-shadow: var(--shadow-lg);
 }
-
 
 .card-header {
     /* Ensure the header background matches the card or is slightly distinct */
@@ -233,9 +225,8 @@ a:hover {
 }
 
 .btn-secondary:hover {
-     background-color: var(--bs-secondary-bg-subtle);
+    background-color: var(--bs-secondary-bg-subtle);
 }
-
 
 /* Outline Buttons */
 .btn-outline-primary {
@@ -252,6 +243,7 @@ a:hover {
 [data-bs-theme="light"] .btn-outline-primary:hover {
     color: #fff;
 }
+
 [data-bs-theme="dark"] .btn-outline-primary:hover {
     color: #12121a;
 }
@@ -278,7 +270,6 @@ a:hover {
     background-color: var(--bp-background-dark); /* Inputs darker than the card surface in dark mode */
     color: var(--bs-body-color);
 }
-
 
 .form-control:focus, .form-select:focus {
     border-color: var(--bs-primary);
@@ -368,11 +359,11 @@ a:hover {
 }
 
 /* CSS-based Icon Switching */
-
 /* Light Mode: Show the Moon icon (to switch to dark) */
 [data-bs-theme="light"] .icon-light-mode {
     display: none;
 }
+
 [data-bs-theme="light"] .icon-dark-mode {
     display: block;
 }
@@ -381,13 +372,13 @@ a:hover {
 [data-bs-theme="dark"] .icon-light-mode {
     display: block;
 }
+
 [data-bs-theme="dark"] .icon-dark-mode {
     display: none;
 }
 
 /* --- 5. Utility Class Overrides for Dark Mode (Defensive Fixes) --- */
 /* These overrides target hardcoded utility classes that might be present in the HTML */
-
 [data-bs-theme="dark"] .bg-white,
 [data-bs-theme="dark"] .bg-light {
     /* Force elements explicitly set to white/light to use the dark surface color */
@@ -402,12 +393,8 @@ a:hover {
     color: var(--bs-body-color) !important;
 }
 
-
-/* --- 6. Quiz Player Specific Styles (NEW) --- */
-
+/* --- 6. Quiz Player Specific Styles --- */
 /* Answer List Group (Using CSS Counters for A, B, C prefixes) */
-/* This requires the HTML template to use the class 'answer-list-group' on the container */
-
 .answer-list-group {
     padding-left: 0;
     counter-reset: answer-counter; /* Initialize the counter */
@@ -416,7 +403,7 @@ a:hover {
 .answer-list-group .list-group-item {
     position: relative;
     /* Ensure adequate padding for the content, accommodating the letter */
-    padding-left: 3.5rem; 
+    padding-left: 3.5rem;
 }
 
 /* Generate the A, B, C prefix using CSS counters */
@@ -427,7 +414,6 @@ a:hover {
     left: 1rem; /* Position the letter */
     font-weight: 700;
     color: var(--bs-primary); /* Use the primary color for the letter */
-    
     /* Style the letter like a badge/circle */
     background-color: rgba(var(--bs-primary-rgb), 0.15);
     width: 2rem;
@@ -437,21 +423,18 @@ a:hover {
     align-items: center;
     justify-content: center;
     font-size: 0.9rem;
-
     /* Center vertically */
     top: 50%;
-    transform: translateY(-50%); 
+    transform: translateY(-50%);
     transition: var(--transition-fast);
 }
 
 /* Enhance the visual feedback on hover */
 .answer-list-group .list-group-item-action:hover::before {
-     background-color: rgba(var(--bs-primary-rgb), 0.25);
+    background-color: rgba(var(--bs-primary-rgb), 0.25);
 }
 
 /* Adjust prefix color and background in feedback states (Correct/Incorrect) */
-/* These rely on Bootstrap's contextual classes applied in the template (e.g., list-group-item-success) */
-
 .list-group-item-success::before {
     color: var(--bs-success-text-emphasis);
     background-color: rgba(var(--bs-success-rgb), 0.25);
@@ -460,4 +443,47 @@ a:hover {
 .list-group-item-danger::before {
     color: var(--bs-danger-text-emphasis);
     background-color: rgba(var(--bs-danger-rgb), 0.25);
+}
+
+/* --- 7. Quiz Player Answer Selection Improvements --- */
+.answer-option {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.answer-option:hover {
+    transform: translateX(5px);
+    background-color: rgba(var(--bs-primary-rgb), 0.05);
+}
+
+.answer-option input[type="radio"] {
+    cursor: pointer;
+    margin-top: 0.25rem;
+}
+
+.answer-option.selected {
+    background-color: rgba(var(--bs-primary-rgb), 0.15) !important;
+    border-color: var(--bs-primary) !important;
+    border-width: 2px;
+}
+
+[data-bs-theme="dark"] .answer-option.selected {
+    background-color: rgba(140, 158, 255, 0.2) !important;
+    border-color: #4a90e2 !important;
+}
+
+[data-bs-theme="dark"] .answer-option:hover {
+    background-color: rgba(140, 158, 255, 0.1);
+}
+
+/* Error message styling */
+#answer-error {
+    animation: shake 0.5s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
 }

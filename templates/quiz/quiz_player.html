@@ -1,5 +1,4 @@
 <!-- templates/quiz/quiz_player.html -->
-
 {% extends "base.html" %}
 
 {% block title %}Question {{ question_index }} - BitePrep{% endblock %}
@@ -8,7 +7,6 @@
 <form id="quiz-player-form" method="POST" action="{% url 'quiz_player' question_index=question_index %}">
     {% csrf_token %}
     <div class="row g-4">
-
         <!-- Main Question Area -->
         <div class="col-lg-9">
             <div class="card shadow-sm mb-4">
@@ -19,12 +17,12 @@
                             Question {{ question_index }} of {{ total_questions }}
                             <!-- FEATURE: Show active penalty badge -->
                             {% if penalty_value > 0.0 %}
-                                <span class="badge bg-warning text-dark ms-2" title="Negative Marking Active">Penalty: -{{ penalty_value }}</span>
+                            <span class="badge bg-warning text-dark ms-2" title="Negative Marking Active">Penalty: -{{ penalty_value }}</span>
                             {% endif %}
                         </span>
                         {% if seconds_remaining is not None %}
-                            <!-- Enhanced Timer Display -->
-                            <span id="timer" class="badge bg-danger fs-6 px-3 py-2"><i class="bi bi-stopwatch me-2"></i>--:--</span>
+                        <!-- Enhanced Timer Display -->
+                        <span id="timer" class="badge bg-danger fs-6 px-3 py-2"><i class="bi bi-stopwatch me-2"></i>--:--</span>
                         {% endif %}
                     </div>
                 </div>
@@ -32,7 +30,6 @@
                 <!-- Progress Bar -->
                 {% if total_questions > 1 %}
                 <div class="progress" style="height: 6px; border-top-left-radius: 0; border-top-right-radius: 0;">
-                    <!-- FIX for Linter: Use CSS Custom Property to hold the dynamic width -->
                     <div class="progress-bar" role="progressbar"
                          style="--progress-width: {{ progress_percentage }}%; width: var(--progress-width);"
                          aria-valuenow="{{ progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
@@ -42,34 +39,32 @@
                 <!-- Question Content -->
                 <div class="card-body p-4 p-md-5">
                     <p class="card-text fs-5 mb-4"><strong>{{ question.question_text|linebreaksbr }}</strong></p>
-
+                    
                     {% if question.question_image %}
-                        <div class="text-center mb-4">
-                            <img src="{{ question.question_image.url }}" alt="Question Image" class="img-fluid rounded shadow-sm" style="max-height: 400px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#imageModal">
-                        </div>
+                    <div class="text-center mb-4">
+                        <img src="{{ question.question_image.url }}" alt="Question Image" 
+                             class="img-fluid rounded shadow-sm" style="max-height: 400px; cursor: pointer;" 
+                             data-bs-toggle="modal" data-bs-target="#imageModal">
+                    </div>
                     {% endif %}
 
                     <!-- Answers -->
                     {% if is_feedback_mode %}
                         <!-- Feedback Mode (Quiz Mode after submission) -->
-                        <!-- UPDATED: Added answer-list-group -->
                         <div class="list-group answer-list-group">
                             {% for answer in question.answers.all %}
-                                <div class="list-group-item
-                                    {% if answer.is_correct %}list-group-item-success{% endif %}
-                                    {% if user_answer and answer.id == user_answer.id and not answer.is_correct %}list-group-item-danger{% endif %}
-                                    d-flex justify-content-between align-items-center
-                                ">
-                                    <span>
-                                        <!-- UPDATED: Icons removed, CSS handles visualization -->
-                                        {{ answer.answer_text }}
-                                    </span>
-                                    {% if user_answer and answer.id == user_answer.id %}
-                                        <span class="badge bg-primary">Your Choice</span>
-                                    {% endif %}
-                                </div>
+                            <div class="list-group-item
+                                {% if answer.is_correct %}list-group-item-success{% endif %}
+                                {% if user_answer and answer.id == user_answer.id and not answer.is_correct %}list-group-item-danger{% endif %}
+                                d-flex justify-content-between align-items-center">
+                                <span>{{ answer.answer_text }}</span>
+                                {% if user_answer and answer.id == user_answer.id %}
+                                <span class="badge bg-primary">Your Choice</span>
+                                {% endif %}
+                            </div>
                             {% endfor %}
                         </div>
+
                         <!-- Explanation Box -->
                         <div class="alert alert-info mt-5">
                             <h5 class="alert-heading">Explanation:</h5>
@@ -77,15 +72,19 @@
                         </div>
                     {% else %}
                         <!-- Active Quiz/Test Mode -->
-                        <!-- UPDATED: Added answer-list-group -->
                         <div class="list-group answer-list-group">
                             {% for answer in question.answers.all %}
-                                <!-- UPDATED: Removed p-3 as CSS handles padding. Hide radio button. -->
-                                <label class="list-group-item list-group-item-action">
-                                    <input class="form-check-input visually-hidden" type="radio" name="answer" value="{{ answer.id }}" {% if user_selected_answer_id == answer.id %}checked{% endif %}>
-                                    {{ answer.answer_text }}
-                                </label>
+                            <label class="list-group-item list-group-item-action answer-option" data-answer-id="{{ answer.id }}">
+                                <input class="form-check-input me-3" type="radio" name="answer" value="{{ answer.id }}" 
+                                       {% if user_selected_answer_id == answer.id %}checked{% endif %}>
+                                <span>{{ answer.answer_text }}</span>
+                            </label>
                             {% endfor %}
+                        </div>
+                        
+                        <!-- Error message for empty submission -->
+                        <div id="answer-error" class="alert alert-danger mt-3 d-none">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>Please select an answer before submitting.
                         </div>
                     {% endif %}
                 </div>
@@ -95,19 +94,19 @@
                     <!-- Left Side (Prev/Report/Flag) -->
                     <div>
                         {% if not is_feedback_mode %}
-                            <button type="submit" name="action" value="prev" class="btn btn-outline-secondary me-2 {% if question_index <= 1 %}disabled{% endif %}">
-                                <i class="bi bi-arrow-left"></i> Previous
-                            </button>
+                        <button type="submit" name="action" value="prev" class="btn btn-outline-secondary me-2 {% if question_index <= 1 %}disabled{% endif %}">
+                            <i class="bi bi-arrow-left"></i> Previous
+                        </button>
                         {% endif %}
-
+                        
                         <button type="button" class="btn btn-outline-danger me-2" data-bs-toggle="modal" data-bs-target="#reportModal" title="Report Issue">
                             <i class="bi bi-exclamation-triangle"></i>
                         </button>
-
+                        
                         {% if not is_feedback_mode %}
-                            <button type="submit" name="action" value="toggle_flag" class="btn {% if question.id in flagged_questions %}btn-warning{% else %}btn-outline-warning{% endif %}" title="Flag for Review">
-                                <i class="bi bi-flag-fill"></i>
-                            </button>
+                        <button type="submit" name="action" value="toggle_flag" class="btn {% if question.id in flagged_questions %}btn-warning{% else %}btn-outline-warning{% endif %}" title="Flag for Review">
+                            <i class="bi bi-flag-fill"></i>
+                        </button>
                         {% endif %}
                     </div>
 
@@ -115,18 +114,18 @@
                     <div>
                         {% if is_feedback_mode %}
                             {% if is_last_question %}
-                                <button type="submit" name="action" value="finish" class="btn btn-success">Finish & See Results <i class="bi bi-check-lg"></i></button>
+                            <button type="submit" name="action" value="finish" class="btn btn-success">Finish & See Results <i class="bi bi-check-lg"></i></button>
                             {% else %}
-                                <button type="submit" name="action" value="next" class="btn btn-primary">Next Question <i class="bi bi-arrow-right"></i></button>
+                            <button type="submit" name="action" value="next" class="btn btn-primary">Next Question <i class="bi bi-arrow-right"></i></button>
                             {% endif %}
                         {% else %}
                             {% if quiz_context.mode == 'quiz' %}
-                                <button type="submit" name="action" value="submit_answer" class="btn btn-success ms-2">Submit Answer</button>
+                            <button type="button" id="submit-answer-btn" class="btn btn-success ms-2">Submit Answer</button>
                             {% else %}
                                 {% if question_index >= total_questions %}
-                                    <button type="submit" name="action" value="finish" class="btn btn-success">Finish & See Results <i class="bi bi-check-lg"></i></button>
+                                <button type="submit" name="action" value="finish" class="btn btn-success">Finish & See Results <i class="bi bi-check-lg"></i></button>
                                 {% else %}
-                                    <button type="submit" name="action" value="next" class="btn btn-primary">Next <i class="bi bi-arrow-right"></i></button>
+                                <button type="submit" name="action" value="next" class="btn btn-primary">Next <i class="bi bi-arrow-right"></i></button>
                                 {% endif %}
                             {% endif %}
                         {% endif %}
@@ -137,23 +136,21 @@
 
         <!-- Navigator Sidebar -->
         <div class="col-lg-3">
-            <!-- Make the navigator sticky -->
             <div class="card shadow-sm sticky-top" style="top: 100px;">
                 <div class="card-header fw-bold"><i class="bi bi-compass-fill me-2"></i>Navigator</div>
                 <div class="card-body" style="max-height: 60vh; overflow-y: auto;">
                     <div class="d-flex flex-wrap justify-content-center">
                         {% for item in navigator_items %}
-                            <button type="submit" name="navigate_to" value="{{ item.index }}"
-                               class="btn {{ item.class }} m-1 position-relative d-flex justify-content-center align-items-center"
-                               style="width: 40px; height: 40px; padding: 0;">
-                                {{ item.index }}
-                                <!-- Flag indicator (small dot) -->
-                                {% if item.is_flagged %}
-                                    <span class="position-absolute top-0 start-100 translate-middle p-1 bg-warning border border-light rounded-circle">
-                                        <span class="visually-hidden">Flagged</span>
-                                    </span>
-                                {% endif %}
-                            </button>
+                        <button type="submit" name="navigate_to" value="{{ item.index }}"
+                                class="btn {{ item.class }} m-1 position-relative d-flex justify-content-center align-items-center"
+                                style="width: 40px; height: 40px; padding: 0;">
+                            {{ item.index }}
+                            {% if item.is_flagged %}
+                            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-warning border border-light rounded-circle">
+                                <span class="visually-hidden">Flagged</span>
+                            </span>
+                            {% endif %}
+                        </button>
                         {% endfor %}
                     </div>
                 </div>
@@ -167,39 +164,129 @@
     </div>
 </form>
 
-<!-- Modals (Image Viewer and Report) -->
+<!-- Modals -->
 {% if question.question_image %}
-<div class="modal fade" id="imageModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Image Viewer</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-center"><img src="{{ question.question_image.url }}" class="img-fluid"></div></div></div></div>
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Image Viewer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="{{ question.question_image.url }}" class="img-fluid">
+            </div>
+        </div>
+    </div>
+</div>
 {% endif %}
-<div class="modal fade" id="reportModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Report an Issue with Question {{ question_index }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><form id="report-question-form"><div class="modal-body"><div class="mb-3"><label for="report-reason" class="form-label">Please describe the issue (e.g., typo, incorrect answer, unclear explanation):</label><textarea class="form-control" id="report-reason" rows="4" required></textarea></div><div id="report-feedback-message" class="text-center mt-3"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="button" class="btn btn-primary" id="submit-report-btn">Submit Report</button></div></form></div></div></div>
+
+<div class="modal fade" id="reportModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Report an Issue with Question {{ question_index }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="report-question-form">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="report-reason" class="form-label">Please describe the issue:</label>
+                        <textarea class="form-control" id="report-reason" rows="4" required></textarea>
+                    </div>
+                    <div id="report-feedback-message" class="text-center mt-3"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="submit-report-btn">Submit Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 {{ seconds_remaining|json_script:"timer-data" }}
 {{ question.id|json_script:"question-id-data" }}
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // TIMER SCRIPT (Enhanced display)
+    // ANSWER SELECTION VISUAL FEEDBACK
+    const answerOptions = document.querySelectorAll('.answer-option');
+    const radioButtons = document.querySelectorAll('input[name="answer"]');
+    
+    // Update visual selection when clicking on answer
+    answerOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            // Remove selected class from all options
+            answerOptions.forEach(opt => opt.classList.remove('selected'));
+            // Add selected class to clicked option
+            this.classList.add('selected');
+            // Clear any error message
+            const errorDiv = document.getElementById('answer-error');
+            if (errorDiv) {
+                errorDiv.classList.add('d-none');
+            }
+        });
+    });
+    
+    // Set initial selected state if answer was previously selected
+    radioButtons.forEach(radio => {
+        if (radio.checked) {
+            radio.closest('.answer-option').classList.add('selected');
+        }
+    });
+
+    // QUIZ MODE SUBMIT VALIDATION
+    const submitAnswerBtn = document.getElementById('submit-answer-btn');
+    if (submitAnswerBtn) {
+        submitAnswerBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const selectedAnswer = document.querySelector('input[name="answer"]:checked');
+            const errorDiv = document.getElementById('answer-error');
+            
+            if (!selectedAnswer) {
+                // Show error message
+                errorDiv.classList.remove('d-none');
+                // Scroll to answers section
+                document.querySelector('.answer-list-group').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            
+            // Submit the form with the submit_answer action
+            const form = document.getElementById('quiz-player-form');
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'submit_answer';
+            form.appendChild(actionInput);
+            form.submit();
+        });
+    }
+
+    // TIMER SCRIPT
     const timerDataEl = document.getElementById('timer-data');
     if (timerDataEl && timerDataEl.textContent.trim() !== '') {
         try {
             let secondsRemaining = JSON.parse(timerDataEl.textContent);
             const timerDisplay = document.getElementById('timer');
+            
             if (secondsRemaining !== null && timerDisplay) {
                 const updateTimerDisplay = () => {
                     const minutes = Math.floor(secondsRemaining / 60);
                     const seconds = secondsRemaining % 60;
-                    // Keep the icon in the display
                     timerDisplay.innerHTML = `<i class="bi bi-stopwatch me-2"></i>${minutes}:${seconds.toString().padStart(2, '0')}`;
                 };
+                
                 updateTimerDisplay();
-
+                
                 const timerInterval = setInterval(() => {
                     secondsRemaining--;
                     if (secondsRemaining <= 0) {
                         clearInterval(timerInterval);
                         timerDisplay.textContent = 'Time Up!';
-                        // Auto-submit the quiz when time runs out
                         document.getElementById('finish-quiz-button').click();
                         return;
                     }
@@ -211,24 +298,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // AJAX Report Submission (Improved feedback handling)
+    // REPORT SUBMISSION
     const reportBtn = document.getElementById('submit-report-btn');
     const csrfTokenElement = document.querySelector('form#quiz-player-form [name=csrfmiddlewaretoken]');
-
+    
     if(reportBtn && csrfTokenElement) {
         const csrfToken = csrfTokenElement.value;
-
+        
         reportBtn.addEventListener('click', function() {
             const reason = document.getElementById('report-reason').value;
             const questionIdDataEl = document.getElementById('question-id-data');
             const feedbackEl = document.getElementById('report-feedback-message');
-
+            
             if (!reason.trim()) {
                 feedbackEl.textContent = 'Please provide a reason.';
                 feedbackEl.className = 'text-danger';
                 return;
             }
-
+            
             let questionId;
             try {
                 questionId = JSON.parse(questionIdDataEl.textContent);
@@ -236,11 +323,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error("Error parsing question ID:", e);
                 return;
             }
-
+            
             reportBtn.disabled = true;
             feedbackEl.textContent = 'Sending...';
             feedbackEl.className = 'text-info';
-
+            
             fetch("{% url 'report_question' %}", {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
@@ -254,7 +341,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('report-reason').value = '';
                     setTimeout(() => {
                         const modalEl = document.getElementById('reportModal');
-                        // Ensure bootstrap is defined before using it
                         if (typeof bootstrap !== 'undefined') {
                             const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
                             if (modal) { modal.hide(); }
