@@ -400,10 +400,17 @@ a:hover {
     counter-reset: answer-counter; /* Initialize the counter */
 }
 
+/* FIXED: Properly position answer items with letter badges */
 .answer-list-group .list-group-item {
     position: relative;
-    /* Ensure adequate padding for the content, accommodating the letter */
-    padding-left: 3.5rem;
+    /* Increased padding to make room for the letter badge */
+    padding-left: 4rem !important;
+    padding-right: 1.5rem !important;
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+    min-height: 3.5rem;
+    display: flex;
+    align-items: center;
 }
 
 /* Generate the A, B, C prefix using CSS counters */
@@ -411,7 +418,7 @@ a:hover {
     counter-increment: answer-counter;
     content: counter(answer-counter, upper-alpha); /* Display A, B, C */
     position: absolute;
-    left: 1rem; /* Position the letter */
+    left: 0.75rem; /* Position from the left edge */
     font-weight: 700;
     color: var(--bs-primary); /* Use the primary color for the letter */
     /* Style the letter like a badge/circle */
@@ -427,6 +434,7 @@ a:hover {
     top: 50%;
     transform: translateY(-50%);
     transition: var(--transition-fast);
+    z-index: 1;
 }
 
 /* Enhance the visual feedback on hover */
@@ -450,11 +458,16 @@ a:hover {
     cursor: pointer;
     transition: all 0.2s ease;
     position: relative;
-    padding: 1rem 1.5rem !important;
+}
+
+.answer-option span {
+    /* Ensure text doesn't overlap with the letter badge */
+    display: block;
+    width: 100%;
 }
 
 .answer-option:hover {
-    transform: translateX(5px);
+    transform: translateX(3px);
     background-color: rgba(var(--bs-primary-rgb), 0.05);
 }
 
@@ -463,6 +476,8 @@ a:hover {
     position: absolute;
     opacity: 0;
     pointer-events: none;
+    width: 0;
+    height: 0;
 }
 
 .answer-option.selected {
