@@ -18,15 +18,21 @@ django-crispy-forms==2.4
 
 # Media Handling
 pillow==11.3.0
+# Required for secure file type checking (MIME validation)
+python-magic==0.4.27
+# Provides libmagic binaries, crucial for Windows/some environments
+python-magic-bin==0.4.14
 
 # Payments
 stripe==12.3.0
 
 # Security Packages
 django-otp==1.6.1
-# FIX: Changed from django-admin-honeypot1 to the correct package name and updated version
-django-admin-honeypot-updated-2021==1.2.0
 qrcode==7.4.2
+django-axes==6.1.1
+django-defender==0.9.5
+django-ratelimit==4.1.0
+django-csp==3.7
 
 # Admin Enhancements & Auditing
 django-simple-history==3.10.1
@@ -39,6 +45,21 @@ django-storages==1.14.3
 boto3==1.34.146
 botocore==1.34.146
 
+# Caching & Performance
+redis==5.0.1
+django-redis==5.4.0
+hiredis==2.3.2
+
+# Background Tasks
+celery==5.3.4
+kombu==5.3.5
+amqp==5.2.0
+billiard==4.2.0
+
+# Monitoring & Error Tracking
+sentry-sdk==1.39.1
+django-health-check==3.17.0
+
 # Utilities & Compatibility
 certifi==2025.7.14
 charset-normalizer==3.4.2
@@ -49,3 +70,7 @@ typing_extensions==4.14.1
 urllib3==2.5.0
 jmespath==1.0.1
 s3transfer==0.10.1
+
+# Development tools (optional, for local development)
+django-debug-toolbar==4.2.0
+ipython==8.19.0
