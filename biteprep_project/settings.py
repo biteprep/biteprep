@@ -29,6 +29,7 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 # Update ALLOWED_HOSTS to include the Render domain if deploying there
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+
 RENDER_HOSTNAME = os.getenv('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_HOSTNAME)
@@ -46,7 +47,7 @@ INSTALLED_APPS = [
     'crispy_bootstrap5',
     # Security apps
     'axes',  # Account lockout
-    'defender',  # Brute force protection
+    # 'defender',  # REMOVED - Brute force protection (requires Redis configuration)
     'django_otp',
     'django_otp.plugins.otp_totp',
     # Admin enhancements
@@ -73,7 +74,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django_otp.middleware.OTPMiddleware',
     'axes.middleware.AxesMiddleware',  # Account lockout middleware
-    'defender.middleware.FailedLoginMiddleware',  # Brute force protection
+    # 'defender.middleware.FailedLoginMiddleware',  # REMOVED - Brute force protection
     'impersonate.middleware.ImpersonateMiddleware',
     'simple_history.middleware.HistoryRequestMiddleware',
     'users.middleware.EnsureProfileMiddleware',
@@ -184,6 +185,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # --- Cloud Storage Configuration ---
 USE_S3 = os.getenv('USE_S3', 'False') == 'True'
+
 if USE_S3:
     AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
@@ -260,10 +262,10 @@ AXES_RESET_ON_SUCCESS = True
 AXES_ENABLE_ACCESS_FAILURE_LOG = True
 AXES_VERBOSE = True
 
-# Defender configuration (brute force protection)
-DEFENDER_LOGIN_FAILURE_LIMIT = 3
-DEFENDER_COOLOFF_TIME = 600  # 10 minutes
-DEFENDER_LOCKOUT_TEMPLATE = 'defender/lockout.html'
+# Defender configuration (brute force protection) - REMOVED
+# DEFENDER_LOGIN_FAILURE_LIMIT = 3
+# DEFENDER_COOLOFF_TIME = 600  # 10 minutes
+# DEFENDER_LOCKOUT_TEMPLATE = 'defender/lockout.html'
 
 # File upload security
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
@@ -369,11 +371,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
-        'defender': {
-            'handlers': ['security_file'],
-            'level': 'INFO',
-            'propagate': False,
-        },
+        # 'defender': {  # REMOVED
+        #     'handlers': ['security_file'],
+        #     'level': 'INFO',
+        #     'propagate': False,
+        # },
         'quiz': {
             'handlers': ['console', 'file'],
             'level': 'INFO',

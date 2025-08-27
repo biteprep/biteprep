@@ -26,7 +26,7 @@ stripe==12.3.0
 django-otp==1.6.1
 qrcode==7.4.2
 django-axes==6.1.1
-django-defender==0.9.5
+# django-defender==0.9.5  # REMOVED - requires Redis configuration
 django-ratelimit==4.1.0
 django-csp==3.7
 

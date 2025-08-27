@@ -12,7 +12,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.utils.decorators import method_decorator
 from django.contrib.auth.views import LoginView
 from axes.decorators import axes_dispatch
-from defender.decorators import watch_login
+# REMOVED: from defender.decorators import watch_login
 from django.core.exceptions import ValidationError
 import logging
 
@@ -23,7 +23,7 @@ class RateLimitedLoginView(LoginView):
     template_name = 'registration/login.html'
     
     @method_decorator(axes_dispatch)
-    @method_decorator(watch_login())
+    # REMOVED: @method_decorator(watch_login())
     @method_decorator(csrf_protect)
     @method_decorator(never_cache)
     def dispatch(self, *args, **kwargs):
@@ -50,7 +50,6 @@ def signup(request):
         # Rate limiting check for registration
         ip = request.META.get('REMOTE_ADDR', '')
         cache_key = f'signup_attempt_{ip}'
-        
         from django.core.cache import cache
         attempts = cache.get(cache_key, 0)
         
@@ -100,6 +99,7 @@ def delete_account(request):
     if request.method == 'POST':
         # Require password confirmation for account deletion
         password = request.POST.get('confirm_password')
+        
         if not request.user.check_password(password):
             messages.error(request, "Incorrect password. Account not deleted.")
             return redirect('account')
@@ -108,9 +108,11 @@ def delete_account(request):
         username = user.username
         logout(request)
         user.delete()
+        
         logger.info(f'User {username} deleted their account')
         messages.success(request, "Your account has been successfully deleted.")
         return redirect('home')
+    
     return redirect('account')
 
 @login_required
