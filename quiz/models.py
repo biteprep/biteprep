@@ -20,15 +20,8 @@ def validate_image_file(file):
     if ext not in valid_extensions:
         raise ValidationError(f'Invalid file extension. Allowed: {", ".join(valid_extensions)}')
     
-    # Check MIME type by reading file content
-    import magic
-    file.seek(0)  # Reset file pointer
-    mime = magic.from_buffer(file.read(1024), mime=True)
-    file.seek(0)  # Reset again for saving
-    
-    valid_mimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-    if mime not in valid_mimes:
-        raise ValidationError('Invalid file type detected.')
+    # Skip MIME type checking since python-magic is problematic on Render
+    # The extension check and Django's built-in image validation should be sufficient
     
     return file
 
