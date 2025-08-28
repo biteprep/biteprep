@@ -46,8 +46,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     # Security apps
-    'axes',  # Account lockout
-    # 'defender',  # REMOVED - Brute force protection (requires Redis configuration)
+    # 'axes',  # TEMPORARILY DISABLED - Account lockout (database issues)
     'django_otp',
     'django_otp.plugins.otp_totp',
     # Admin enhancements
@@ -73,8 +72,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django_otp.middleware.OTPMiddleware',
-    'axes.middleware.AxesMiddleware',  # Account lockout middleware
-    # 'defender.middleware.FailedLoginMiddleware',  # REMOVED - Brute force protection
+    # 'axes.middleware.AxesMiddleware',  # TEMPORARILY DISABLED - Account lockout middleware
     'impersonate.middleware.ImpersonateMiddleware',
     'simple_history.middleware.HistoryRequestMiddleware',
     'users.middleware.EnsureProfileMiddleware',
@@ -82,9 +80,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Authentication backends for axes
+# Authentication backends
 AUTHENTICATION_BACKENDS = [
-    'axes.backends.AxesBackend',
+    # 'axes.backends.AxesBackend',  # TEMPORARILY DISABLED
     'django.contrib.auth.backends.ModelBackend',
 ]
 
@@ -254,18 +252,13 @@ CSRF_COOKIE_SAMESITE = 'Strict'
 CSRF_USE_SESSIONS = True
 CSRF_FAILURE_VIEW = 'quiz.views.csrf_failure'
 
-# Axes configuration (account lockout)
-AXES_FAILURE_LIMIT = 5  # Lock after 5 failed attempts
-AXES_COOLOFF_TIME = 1  # Lockout for 1 hour
-AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True
-AXES_RESET_ON_SUCCESS = True
-AXES_ENABLE_ACCESS_FAILURE_LOG = True
-AXES_VERBOSE = True
-
-# Defender configuration (brute force protection) - REMOVED
-# DEFENDER_LOGIN_FAILURE_LIMIT = 3
-# DEFENDER_COOLOFF_TIME = 600  # 10 minutes
-# DEFENDER_LOCKOUT_TEMPLATE = 'defender/lockout.html'
+# Axes configuration (account lockout) - TEMPORARILY DISABLED
+# AXES_FAILURE_LIMIT = 5  # Lock after 5 failed attempts
+# AXES_COOLOFF_TIME = 1  # Lockout for 1 hour
+# AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = True
+# AXES_RESET_ON_SUCCESS = True
+# AXES_ENABLE_ACCESS_FAILURE_LOG = True
+# AXES_VERBOSE = True
 
 # File upload security
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
@@ -366,12 +359,7 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': False,
         },
-        'axes': {
-            'handlers': ['security_file'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        # 'defender': {  # REMOVED
+        # 'axes': {  # TEMPORARILY DISABLED
         #     'handlers': ['security_file'],
         #     'level': 'INFO',
         #     'propagate': False,

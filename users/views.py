@@ -11,8 +11,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_protect
 from django.utils.decorators import method_decorator
 from django.contrib.auth.views import LoginView
-from axes.decorators import axes_dispatch
-# REMOVED: from defender.decorators import watch_login
+# REMOVED: from axes.decorators import axes_dispatch
 from django.core.exceptions import ValidationError
 import logging
 
@@ -22,8 +21,7 @@ logger = logging.getLogger('security')
 class RateLimitedLoginView(LoginView):
     template_name = 'registration/login.html'
     
-    @method_decorator(axes_dispatch)
-    # REMOVED: @method_decorator(watch_login())
+    # REMOVED: @method_decorator(axes_dispatch)
     @method_decorator(csrf_protect)
     @method_decorator(never_cache)
     def dispatch(self, *args, **kwargs):
